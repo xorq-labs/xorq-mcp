@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "xorq-mcp"
 version = "0.1.0"
 description = "MCP server for xorq with Buckaroo visualization"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "xorq>=0.3.8",
     "buckaroo[mcp]>=0.12.8",

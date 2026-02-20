@@ -202,7 +202,7 @@ def ensure_server() -> dict:
                     log.debug("Kill old server error (harmless): %s", exc)
 
     global _server_proc
-    cmd = [sys.executable, "-m", "buckaroo.server"]
+    cmd = [sys.executable, "-m", "buckaroo.server", "--no-browser", "--port", str(SERVER_PORT)]
     log.info("Starting server: %s", " ".join(cmd))
 
     server_log = os.path.join(LOG_DIR, "server.log")
@@ -279,7 +279,12 @@ def _view_impl(path: str) -> str:
     col_lines = "\n".join(f"  - {c['name']} ({c['dtype']})" for c in cols)
 
     url = f"{SERVER_URL}/s/{SESSION_ID}"
-    browser_action = result.get("browser_action", "unknown")
+
+    # Open the Buckaroo table in the browser
+    import webbrowser
+    webbrowser.open(url)
+    browser_action = "opened"
+    log.info("Opened browser: %s", url)
     server_pid = result.get("server_pid", server_info.get("server_pid", "?"))
 
     summary = (
