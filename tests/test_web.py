@@ -12,6 +12,7 @@ import tornado.web
 from xorq_web.app import make_app
 from xorq_web.metadata import (
     _render_node_html,
+    get_all_runs,
     get_catalog_entries,
     get_entry_revisions,
     load_build_metadata,
@@ -197,6 +198,62 @@ class TestGetCatalogEntries:
 
 
 # -----------------------------------------------------------------------
+# metadata.py — get_all_runs
+# -----------------------------------------------------------------------
+class TestGetAllRuns:
+    def test_empty_catalog(self):
+        mock_catalog = MagicMock()
+        mock_catalog.entries = []
+        mock_catalog.aliases = {}
+        with patch("xorq.catalog.load_catalog", return_value=mock_catalog):
+            result = get_all_runs()
+            assert result == []
+
+    def test_returns_all_revisions_across_entries(self):
+        mock_build_a = MagicMock()
+        mock_build_a.build_id = "build-a"
+        mock_rev_a = MagicMock()
+        mock_rev_a.revision_id = "r1"
+        mock_rev_a.build = mock_build_a
+        mock_rev_a.created_at = "2025-01-01"
+        mock_rev_a.metadata = {"prompt": "create expr A"}
+
+        mock_build_b = MagicMock()
+        mock_build_b.build_id = "build-b"
+        mock_rev_b = MagicMock()
+        mock_rev_b.revision_id = "r1"
+        mock_rev_b.build = mock_build_b
+        mock_rev_b.created_at = "2025-02-01"
+        mock_rev_b.metadata = {"execute_seconds": 1.5}
+
+        mock_entry_a = MagicMock()
+        mock_entry_a.entry_id = "entry-a"
+        mock_entry_a.history = [mock_rev_a]
+        mock_entry_b = MagicMock()
+        mock_entry_b.entry_id = "entry-b"
+        mock_entry_b.history = [mock_rev_b]
+
+        mock_alias_a = MagicMock()
+        mock_alias_a.entry_id = "entry-a"
+        mock_alias_b = MagicMock()
+        mock_alias_b.entry_id = "entry-b"
+
+        mock_catalog = MagicMock()
+        mock_catalog.entries = [mock_entry_a, mock_entry_b]
+        mock_catalog.aliases = {"expr_a": mock_alias_a, "expr_b": mock_alias_b}
+
+        with patch("xorq.catalog.load_catalog", return_value=mock_catalog):
+            result = get_all_runs()
+
+        assert len(result) == 2
+        # Sorted newest first
+        assert result[0]["display_name"] == "expr_b"
+        assert result[0]["execute_seconds"] == 1.5
+        assert result[1]["display_name"] == "expr_a"
+        assert result[1]["prompt"] == "create expr A"
+
+
+# -----------------------------------------------------------------------
 # metadata.py — get_entry_revisions
 # -----------------------------------------------------------------------
 class TestGetEntryRevisions:
@@ -356,6 +413,54 @@ class TestCatalogIndexHandler(tornado.testing.AsyncHTTPTestCase):
         body = resp.body.decode()
         assert "test_expr" in body
         assert "/entry/test_expr" in body
+
+
+# -----------------------------------------------------------------------
+# handlers.py — RunsHandler (via Tornado test client)
+# -----------------------------------------------------------------------
+class TestRunsHandler(tornado.testing.AsyncHTTPTestCase):
+    def get_app(self):
+        return make_app(buckaroo_port=8455)
+
+    @patch("xorq_web.handlers.get_catalog_entries", return_value=[])
+    @patch("xorq_web.handlers.get_all_runs", return_value=[])
+    def test_empty_runs_renders(self, mock_runs, mock_entries):
+        resp = self.fetch("/runs")
+        assert resp.code == 200
+        body = resp.body.decode()
+        assert "No runs yet" in body
+
+    @patch("xorq_web.handlers.get_catalog_entries", return_value=[])
+    @patch("xorq_web.handlers.get_all_runs")
+    def test_runs_with_data(self, mock_runs, mock_entries):
+        mock_runs.return_value = [
+            {
+                "display_name": "my_expr",
+                "entry_id": "uuid-1",
+                "revision_id": "r2",
+                "build_id": "build-r2",
+                "created_at": "2025-06-01",
+                "prompt": "add more rows",
+                "execute_seconds": 2.5,
+            },
+            {
+                "display_name": "my_expr",
+                "entry_id": "uuid-1",
+                "revision_id": "r1",
+                "build_id": "build-r1",
+                "created_at": "2025-01-01",
+                "prompt": None,
+                "execute_seconds": None,
+            },
+        ]
+        resp = self.fetch("/runs")
+        assert resp.code == 200
+        body = resp.body.decode()
+        assert "my_expr" in body
+        assert "/entry/my_expr@r2" in body
+        assert "/entry/my_expr@r1" in body
+        assert "add more rows" in body
+        assert "2.5s" in body
 
 
 # -----------------------------------------------------------------------

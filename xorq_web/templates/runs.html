@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Runs — xorq{% end %}
+
+{% block content %}
+<div class="page-header">
+  <h1>All Runs</h1>
+  <p class="stats" style="margin-top:0.25rem;">{{ len(runs) }} runs</p>
+</div>
+
+{% if not runs %}
+<div class="empty-state">
+  <h2>No runs yet</h2>
+  <p>Run <code>xorq_run</code> on a script to create runs.</p>
+</div>
+{% else %}
+<table class="runs-table">
+  <thead>
+    <tr>
+      <th>Expression</th>
+      <th>Rev</th>
+      <th>Created</th>
+      <th>Execute Time</th>
+      <th>Prompt</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for run in runs %}
+    <tr>
+      <td>
+        <a href="/entry/{{ run['display_name'] }}@{{ run['revision_id'] }}">
+          {{ run["display_name"] }}
+        </a>
+      </td>
+      <td><span class="badge">{{ run["revision_id"] }}</span></td>
+      <td class="muted">{{ run["created_at"] or "—" }}</td>
+      <td class="mono">{{ (str(run["execute_seconds"]) + "s") if run["execute_seconds"] is not None else "—" }}</td>
+      <td class="prompt-cell">{{ run["prompt"] or "" }}</td>
+    </tr>
+    {% end %}
+  </tbody>
+</table>
+{% end %}
+{% end %}

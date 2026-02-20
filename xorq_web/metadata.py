@@ -96,6 +96,44 @@ def ensure_buckaroo_session(
     return json.loads(resp.read())
 
 
+def get_all_runs() -> list[dict]:
+    """Return every revision across all entries, sorted newest-first.
+
+    Each dict: {display_name, entry_id, revision_id, build_id, created_at,
+                prompt, execute_seconds}
+    """
+    from xorq.catalog import load_catalog
+
+    catalog = load_catalog()
+    if not catalog.entries:
+        return []
+
+    alias_lookup: dict[str, list[str]] = {}
+    if catalog.aliases:
+        for name, alias in catalog.aliases.items():
+            alias_lookup.setdefault(alias.entry_id, []).append(name)
+
+    runs = []
+    for entry in catalog.entries:
+        aliases = alias_lookup.get(entry.entry_id, [])
+        display_name = aliases[0] if aliases else entry.entry_id[:12]
+
+        for rev in entry.history:
+            meta = rev.metadata or {}
+            runs.append({
+                "display_name": display_name,
+                "entry_id": entry.entry_id,
+                "revision_id": rev.revision_id,
+                "build_id": rev.build.build_id if rev.build else None,
+                "created_at": str(rev.created_at) if rev.created_at else None,
+                "prompt": meta.get("prompt"),
+                "execute_seconds": meta.get("execute_seconds"),
+            })
+
+    runs.sort(key=lambda r: r["created_at"] or "", reverse=True)
+    return runs
+
+
 def get_entry_revisions(target: str) -> list[dict]:
     """Return all revisions for the entry that target resolves to.
 

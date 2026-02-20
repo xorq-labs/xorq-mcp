@@ -469,6 +469,62 @@ body {
   font-weight: 600;
 }
 
+/* --- Runs table --- */
+.runs-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.runs-table th,
+.runs-table td {
+  text-align: left;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+
+.runs-table th {
+  background: var(--card-bg);
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  position: sticky;
+  top: 0;
+}
+
+.runs-table td a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.runs-table td a:hover {
+  text-decoration: underline;
+}
+
+.runs-table tr:hover td {
+  background: rgba(74, 125, 255, 0.05);
+}
+
+.runs-table .muted {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.runs-table .mono {
+  font-family: monospace;
+}
+
+.runs-table .prompt-cell {
+  color: var(--text-secondary);
+  max-width: 350px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* --- Empty state --- */
 .empty-state {
   text-align: center;

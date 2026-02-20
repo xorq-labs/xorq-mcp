@@ -14,6 +14,11 @@
       <div class="subtitle">Expression Catalog</div>
     </div>
     <ul class="nav-list">
+      <li>
+        <a href="/runs" class="{{ 'active' if current_entry == '__runs__' else '' }}">
+          All Runs
+        </a>
+      </li>
       {% for entry in nav_entries %}
       <li>
         <a href="/entry/{{ entry['display_name'] }}"

@@ -10,6 +10,7 @@ import tornado.web
 
 from xorq_web.metadata import (
     ensure_buckaroo_session,
+    get_all_runs,
     get_catalog_entries,
     get_entry_revisions,
     load_build_metadata,
@@ -142,6 +143,18 @@ class ExpressionDetailHandler(tornado.web.RequestHandler):
             prev_rev_id=prev_rev_id,
             next_rev_id=next_rev_id,
             revision_metadata=revision_metadata,
+        )
+
+
+class RunsHandler(tornado.web.RequestHandler):
+    def get(self):
+        nav_entries = get_catalog_entries()
+        runs = get_all_runs()
+        self.render(
+            "runs.html",
+            nav_entries=nav_entries,
+            current_entry="__runs__",
+            runs=runs,
         )
 
 

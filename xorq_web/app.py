@@ -2,13 +2,14 @@ import os
 
 import tornado.web
 
-from xorq_web.handlers import CatalogIndexHandler, ExpressionDetailHandler, HealthHandler
+from xorq_web.handlers import CatalogIndexHandler, ExpressionDetailHandler, HealthHandler, RunsHandler
 
 
 def make_app(buckaroo_port: int = 8455) -> tornado.web.Application:
     return tornado.web.Application(
         [
             (r"/", CatalogIndexHandler),
+            (r"/runs", RunsHandler),
             (r"/entry/(.+)", ExpressionDetailHandler),
             (r"/health", HealthHandler),
         ],
