@@ -1,0 +1,16 @@
+{
+  "current_library_version": "0.3.7",
+  "metadata_version": "0.0.0",
+  "git_state": {
+    "commit": "e4a7a31fc72c82373f5816b3235f06c6cd0b81c3",
+    "diff": "diff --git a/examples/README.md b/examples/README.md\nindex 02ab70c7..832f3122 100644\n--- a/examples/README.md\n+++ b/examples/README.md\n@@ -6,19 +6,25 @@ How to run the examples\n From the repo root:\n \n ```bash\n+just download-data\n+just up postgres\n+#On Apple Silicon Macs, you may see a platform mismatch warning for the Postgres image (linux/amd64 vs linux/arm64); this is not an error \u2014 Docker runs it under emulation and it works normally.\n+\n # macOS only\n brew install cmake libomp\n \n+source .venv/bin/activate # Activate the venv\n # Install dependencies (from repo root)\n uv sync --extra examples --extra postgres\n \n-# Activate the venv\n-source .venv/bin/activate\n-docker compose up postgres\n+#docker compose up postgres # I'm not sure if this is needed\n \n # run the examples\n+cd examples\n+xorq build simple_example.py\n+xorq run simple_example.py\n \n-python examples/simple_example.py\n+./xorq_build_and_run.sh iris_example.py # build and run in a single step\n ```",
+    "diff_cached": ""
+  },
+  "sys-version_info": [
+    3,
+    13,
+    11,
+    "final",
+    0
+  ]
+}

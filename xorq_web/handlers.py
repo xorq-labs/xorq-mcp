@@ -29,7 +29,7 @@ class CatalogIndexHandler(tornado.web.RequestHandler):
             "catalog_index.html",
             entries=nav_entries,
             nav_entries=nav_entries,
-            current_entry=None,
+            current_entry="__catalog__",
         )
 
 

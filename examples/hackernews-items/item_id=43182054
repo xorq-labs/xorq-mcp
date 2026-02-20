@@ -1,0 +1,1 @@
+{"by": "layer8", "id": 43182054, "kids": [43182502], "parent": 43182008, "text": "You have the same, if not worse, issue on Linux with filenames that aren\u2019t valid UTF-8 sequences. Not to mention that on Linux switching the locale may change the interpretation of filenames as characters, which isn\u2019t the case with NTFS.", "time": 1740560546, "type": "comment"}

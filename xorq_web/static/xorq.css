@@ -1,138 +1,240 @@
-/* xorq web — dense dark theme */
-* { margin: 0; padding: 0; box-sizing: border-box; }
+/* xorq web — brand theme (Midnight / Blue Sky / Cloud)
+   Design language from xorq-cloud-spcs                    */
 
-:root {
-  --bg: #0c0e14;
-  --sidebar-bg: #10131a;
-  --card-bg: #14171f;
-  --border: #1e2230;
-  --accent: #4a7dff;
-  --accent-hover: #3a6dee;
-  --text: #c8cad0;
-  --text-muted: #626880;
-  --text-secondary: #8b90a0;
-  --badge-bg: #1e2230;
-  --badge-text: #7aa2f7;
-  --error: #ff6b6b;
+/* ==========================================================================
+   FONT FACE DEFINITIONS
+   ========================================================================== */
+
+@font-face {
+  font-family: "ALT Riviera";
+  src: url("fonts/ALTRiviera-Regular.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
 }
 
+@font-face {
+  font-family: "FK Grotesk Mono";
+  src: url("fonts/FKGroteskMono-Regular.woff2") format("woff2"),
+       url("fonts/FKGroteskMono-Regular.woff") format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ==========================================================================
+   DESIGN TOKENS
+   ========================================================================== */
+
+:root {
+  /* Brand Colors */
+  --xorq-midnight: #05181a;
+  --xorq-blue-sky: #c1f0ff;
+  --xorq-cloud: #f0fbff;
+
+  /* Semantic Colors — dark theme */
+  --bg: #05181a;
+  --sidebar-bg: #041214;
+  --card-bg: #0a2024;
+  --border: rgba(193, 240, 255, 0.12);
+  --border-strong: rgba(193, 240, 255, 0.25);
+  --accent: #c1f0ff;
+  --accent-hover: #a8e4f8;
+  --text: rgba(240, 251, 255, 0.85);
+  --text-muted: rgba(193, 240, 255, 0.35);
+  --text-secondary: rgba(193, 240, 255, 0.55);
+  --badge-bg: rgba(193, 240, 255, 0.08);
+  --badge-text: #c1f0ff;
+  --error: #ff6b6b;
+  --success: #34d399;
+
+  /* Font Families */
+  --font-heading: "ALT Riviera", "Inter Tight", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "FK Grotesk Mono", "Space Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Spacing — 8px base */
+  --space-1: 0.5rem;
+  --space-2: 1rem;
+  --space-3: 1.5rem;
+  --space-4: 2rem;
+
+  /* Border Radius */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+}
+
+/* ==========================================================================
+   BASE STYLES
+   ========================================================================== */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
 body {
-  font-family: "SF Mono", "Cascadia Mono", "Consolas", monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
   background: var(--bg);
   color: var(--text);
   display: flex;
   min-height: 100vh;
-  line-height: 1.4;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* --- Sidebar --- */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 400;
+  line-height: 1.0;
+  letter-spacing: -0.02em;
+}
+
+code, pre {
+  font-family: var(--font-mono);
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+a:hover {
+  color: var(--accent-hover);
+}
+
+/* ==========================================================================
+   SIDEBAR
+   ========================================================================== */
+
 .sidebar {
-  width: 200px;
-  min-width: 200px;
+  width: 220px;
+  min-width: 220px;
   background: var(--sidebar-bg);
   border-right: 1px solid var(--border);
-  padding: 0.5rem 0;
+  padding: 0;
   overflow-y: auto;
   position: fixed;
   top: 0;
   bottom: 0;
   left: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .sidebar-header {
-  padding: 0.4rem 0.6rem 0.4rem;
+  padding: var(--space-2) var(--space-2) var(--space-1);
   border-bottom: 1px solid var(--border);
-  margin-bottom: 0.25rem;
 }
 
-.sidebar-header h1 {
-  font-size: 13px;
-  font-weight: 700;
-  color: #fff;
-  letter-spacing: 0.08em;
+.sidebar-header .logo {
+  display: block;
+  height: 20px;
+  width: auto;
+  margin-bottom: 4px;
 }
 
 .sidebar-header .subtitle {
+  font-family: var(--font-mono);
   font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   color: var(--text-muted);
-  margin-top: 1px;
+}
+
+.nav-section-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  padding: var(--space-2) var(--space-2) 4px;
 }
 
 .nav-list {
   list-style: none;
+  padding: 4px 0;
 }
 
 .nav-list li a {
   display: block;
-  padding: 3px 8px;
+  padding: 5px var(--space-2);
   color: var(--text-secondary);
   text-decoration: none;
-  font-size: 11px;
+  font-family: var(--font-mono);
+  font-size: 12px;
   border-left: 2px solid transparent;
-  transition: background 0.1s, color 0.1s;
+  transition: background 0.15s, color 0.15s, transform 0.15s;
 }
 
 .nav-list li a:hover {
-  background: rgba(74, 125, 255, 0.06);
-  color: #fff;
+  background: rgba(193, 240, 255, 0.04);
+  color: var(--xorq-cloud);
+  transform: translateX(2px);
 }
 
 .nav-list li a.active {
-  background: rgba(74, 125, 255, 0.1);
+  background: rgba(193, 240, 255, 0.08);
   border-left-color: var(--accent);
-  color: #fff;
+  color: var(--xorq-cloud);
 }
 
 .nav-list li a .nav-meta {
   display: block;
   font-size: 10px;
   color: var(--text-muted);
-  margin-top: 0px;
 }
 
-/* --- Main content --- */
+/* ==========================================================================
+   MAIN CONTENT
+   ========================================================================== */
+
 .main {
-  margin-left: 200px;
+  margin-left: 220px;
   flex: 1;
-  padding: 0.75rem 1rem;
+  padding: var(--space-3) var(--space-4);
   min-width: 0;
 }
 
-/* --- Catalog cards --- */
+/* ==========================================================================
+   CATALOG CARDS
+   ========================================================================== */
+
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--space-1);
 }
 
 .card {
   background: var(--card-bg);
   border: 1px solid var(--border);
-  border-radius: 2px;
-  padding: 8px 10px;
-  transition: border-color 0.15s;
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-2);
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .card:hover {
-  border-color: var(--accent);
+  border-color: var(--border-strong);
+  box-shadow: 0 0 0 1px rgba(193, 240, 255, 0.06);
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .card-header h2 {
-  font-size: 12px;
-  font-weight: 600;
-  color: #fff;
+  font-family: var(--font-heading);
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--xorq-cloud);
+  letter-spacing: -0.02em;
 }
 
 .card-header h2 a {
-  color: #fff;
+  color: var(--xorq-cloud);
   text-decoration: none;
 }
 
@@ -141,42 +243,52 @@ body {
 }
 
 .view-btn {
-  background: var(--accent);
-  color: #fff;
+  font-family: var(--font-mono);
+  background: transparent;
+  color: var(--accent);
   text-decoration: none;
-  padding: 2px 8px;
-  border-radius: 2px;
-  font-size: 11px;
-  font-weight: 600;
-  transition: background 0.15s;
+  padding: 3px 10px;
+  border: 1px solid var(--accent);
+  border-radius: 0;
+  font-size: 10px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: background 0.15s, color 0.15s;
 }
 
 .view-btn:hover {
-  background: var(--accent-hover);
+  background: var(--accent);
+  color: var(--xorq-midnight);
 }
 
 .meta {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .badge {
+  font-family: var(--font-mono);
   background: var(--badge-bg);
   color: var(--badge-text);
-  padding: 1px 5px;
-  border-radius: 2px;
-  font-size: 11px;
-  font-family: inherit;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid var(--border);
 }
 
 .stats {
+  font-family: var(--font-mono);
   color: var(--text-muted);
   font-size: 11px;
 }
 
 .details {
+  font-family: var(--font-mono);
   font-size: 11px;
   color: var(--text-secondary);
   display: grid;
@@ -184,11 +296,20 @@ body {
   gap: 2px 12px;
 }
 
+.details strong {
+  color: var(--text-muted);
+  font-weight: 400;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
 .details code {
   background: var(--badge-bg);
   padding: 0 3px;
   border-radius: 1px;
   font-size: 11px;
+  color: var(--text);
 }
 
 .error {
@@ -196,30 +317,38 @@ body {
   font-size: 11px;
 }
 
-/* --- Expression detail page --- */
+/* ==========================================================================
+   EXPRESSION DETAIL PAGE
+   ========================================================================== */
+
 .page-header {
-  margin-bottom: 6px;
+  margin-bottom: var(--space-1);
 }
 
 .page-header h1 {
-  font-size: 14px;
-  font-weight: 700;
-  color: #fff;
+  font-family: var(--font-heading);
+  font-size: 24px;
+  font-weight: 400;
+  color: var(--xorq-cloud);
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  letter-spacing: -0.02em;
 }
 
-/* --- Revision navigation --- */
+/* ==========================================================================
+   REVISION NAVIGATION
+   ========================================================================== */
+
 .revision-nav {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 6px;
-  padding: 4px 8px;
+  margin-bottom: var(--space-1);
+  padding: 6px var(--space-2);
   background: var(--card-bg);
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius-md);
 }
 
 .revision-arrows {
@@ -227,17 +356,18 @@ body {
 }
 
 .rev-arrow {
+  font-family: var(--font-mono);
   color: var(--accent);
   text-decoration: none;
   font-size: 11px;
-  font-weight: 600;
-  padding: 2px 4px;
-  border-radius: 2px;
-  transition: background 0.1s;
+  font-weight: 400;
+  padding: 2px 6px;
+  border-radius: 0;
+  transition: background 0.15s;
 }
 
 .rev-arrow:hover {
-  background: rgba(74, 125, 255, 0.1);
+  background: rgba(193, 240, 255, 0.08);
 }
 
 .rev-arrow.disabled {
@@ -254,154 +384,219 @@ body {
 }
 
 .rev-badge {
+  font-family: var(--font-mono);
   display: inline-block;
   background: var(--badge-bg);
   color: var(--text-secondary);
-  padding: 1px 6px;
-  border-radius: 2px;
-  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 0;
+  font-size: 10px;
   text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   border: 1px solid transparent;
-  transition: background 0.1s, border-color 0.1s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
 .rev-badge:hover {
-  background: rgba(74, 125, 255, 0.1);
-  color: #fff;
-  border-color: var(--accent);
+  background: rgba(193, 240, 255, 0.08);
+  color: var(--xorq-cloud);
+  border-color: var(--border-strong);
 }
 
 .rev-badge.active {
   background: var(--accent);
-  color: #fff;
+  color: var(--xorq-midnight);
   border-color: var(--accent);
 }
 
-/* --- Prompt block --- */
+/* ==========================================================================
+   PROMPT BLOCK
+   ========================================================================== */
+
 .prompt-block {
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-left: 2px solid var(--accent);
-  border-radius: 2px;
-  padding: 4px 8px;
-  margin-bottom: 6px;
+  border-radius: 0;
+  padding: 6px var(--space-2);
+  margin-bottom: var(--space-1);
 }
 
 .prompt-label {
+  font-family: var(--font-mono);
   font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   color: var(--text-muted);
   margin-bottom: 2px;
 }
 
 .prompt-text {
+  font-family: var(--font-mono);
   font-size: 12px;
   color: var(--text);
-  line-height: 1.4;
+  line-height: 1.5;
   white-space: pre-wrap;
 }
 
-/* --- Execute time --- */
+/* ==========================================================================
+   EXECUTE TIME
+   ========================================================================== */
+
 .execute-time {
   display: flex;
   align-items: center;
-  gap: 5px;
-  margin-bottom: 6px;
+  gap: 6px;
+  margin-bottom: var(--space-1);
   font-size: 11px;
 }
 
 .execute-time-label {
+  font-family: var(--font-mono);
   color: var(--text-muted);
   text-transform: uppercase;
   font-size: 10px;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
 }
 
 .execute-time-value {
-  color: #fff;
+  font-family: var(--font-mono);
+  color: var(--xorq-cloud);
   background: var(--badge-bg);
-  padding: 1px 5px;
-  border-radius: 2px;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
 }
 
-/* --- Metadata grid --- */
+/* ==========================================================================
+   METADATA GRID
+   ========================================================================== */
+
 .metadata-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 4px;
-  margin-bottom: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 6px;
+  margin-bottom: var(--space-2);
 }
 
 .metadata-item {
   background: var(--card-bg);
   border: 1px solid var(--border);
-  border-radius: 2px;
-  padding: 4px 8px;
+  border-radius: var(--radius-md);
+  padding: 6px var(--space-2);
 }
 
 .metadata-item .label {
+  font-family: var(--font-mono);
   font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   color: var(--text-muted);
-  margin-bottom: 1px;
+  margin-bottom: 2px;
 }
 
 .metadata-item .value {
+  font-family: var(--font-mono);
   font-size: 11px;
-  color: #fff;
+  color: var(--xorq-cloud);
   word-break: break-all;
 }
 
-/* --- Section titles --- */
+/* ==========================================================================
+   SECTION TITLES
+   ========================================================================== */
+
 .section-title {
-  font-size: 11px;
-  font-weight: 700;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 400;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 4px;
-  margin-top: 10px;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+  margin-top: var(--space-2);
 }
 
-/* --- Schema table --- */
-.schema-table {
+/* ==========================================================================
+   TABLES (schema, runs)
+   ========================================================================== */
+
+.schema-table,
+.runs-table {
   width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 8px;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-bottom: var(--space-1);
 }
 
 .schema-table th,
-.schema-table td {
+.schema-table td,
+.runs-table th,
+.runs-table td {
   text-align: left;
-  padding: 3px 8px;
+  padding: 6px var(--space-2);
   border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono);
   font-size: 11px;
 }
 
-.schema-table th {
+.schema-table th,
+.runs-table th {
   background: var(--card-bg);
   color: var(--text-muted);
-  font-weight: 600;
+  font-weight: 400;
   font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
+  position: sticky;
+  top: 0;
 }
 
 .schema-table td {
   color: var(--text);
 }
 
-.schema-table tr:hover td {
-  background: rgba(74, 125, 255, 0.04);
+.schema-table tr:hover td,
+.runs-table tr:hover td {
+  background: rgba(193, 240, 255, 0.03);
 }
 
-/* --- Buckaroo iframe --- */
+.runs-table td a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 400;
+}
+
+.runs-table td a:hover {
+  text-decoration: underline;
+}
+
+.runs-table .muted {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.runs-table .mono {
+  font-family: var(--font-mono);
+}
+
+.runs-table .prompt-cell {
+  color: var(--text-secondary);
+  max-width: 400px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   BUCKAROO IFRAME
+   ========================================================================== */
+
 .iframe-container {
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
 
@@ -412,7 +607,10 @@ body {
   background: #fff;
 }
 
-/* --- Lineage section --- */
+/* ==========================================================================
+   LINEAGE
+   ========================================================================== */
+
 .lineage-section {
   margin-top: 4px;
 }
@@ -422,29 +620,30 @@ body {
 }
 
 .lineage-toggle {
+  font-family: var(--font-mono);
   background: var(--card-bg);
   border: 1px solid var(--border);
-  border-radius: 2px;
-  padding: 3px 8px;
-  color: #fff;
+  border-radius: 0;
+  padding: 5px var(--space-2);
+  color: var(--xorq-cloud);
   cursor: pointer;
   font-size: 11px;
-  font-family: inherit;
   width: 100%;
   text-align: left;
   display: flex;
   align-items: center;
-  gap: 4px;
-  transition: background 0.1s;
+  gap: 6px;
+  transition: background 0.15s;
 }
 
 .lineage-toggle:hover {
-  background: rgba(74, 125, 255, 0.06);
+  background: rgba(193, 240, 255, 0.04);
 }
 
 .lineage-toggle .arrow {
   transition: transform 0.15s;
   font-size: 9px;
+  color: var(--text-muted);
 }
 
 .lineage-toggle.open .arrow {
@@ -455,7 +654,7 @@ body {
   display: none;
   padding: 4px 8px 4px 16px;
   border-left: 1px solid var(--border);
-  margin-left: 4px;
+  margin-left: 6px;
   margin-bottom: 2px;
 }
 
@@ -473,6 +672,7 @@ body {
 }
 
 .lineage-tree li {
+  font-family: var(--font-mono);
   font-size: 11px;
   color: var(--text-secondary);
   padding: 1px 0;
@@ -493,75 +693,33 @@ body {
 }
 
 .lineage-tree li strong {
-  color: var(--badge-text);
-  font-weight: 600;
-}
-
-/* --- Runs table --- */
-.runs-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.runs-table th,
-.runs-table td {
-  text-align: left;
-  padding: 3px 8px;
-  border-bottom: 1px solid var(--border);
-  font-size: 11px;
-}
-
-.runs-table th {
-  background: var(--card-bg);
-  color: var(--text-muted);
-  font-weight: 600;
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  position: sticky;
-  top: 0;
-}
-
-.runs-table td a {
   color: var(--accent);
-  text-decoration: none;
-  font-weight: 600;
+  font-weight: 400;
 }
 
-.runs-table td a:hover {
-  text-decoration: underline;
-}
+/* ==========================================================================
+   EMPTY STATE
+   ========================================================================== */
 
-.runs-table tr:hover td {
-  background: rgba(74, 125, 255, 0.04);
-}
-
-.runs-table .muted {
-  color: var(--text-muted);
-  font-size: 11px;
-}
-
-.runs-table .mono {
-  font-family: inherit;
-}
-
-.runs-table .prompt-cell {
-  color: var(--text-secondary);
-  max-width: 400px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* --- Empty state --- */
 .empty-state {
   text-align: center;
-  padding: 2rem 1rem;
+  padding: var(--space-8) var(--space-4);
   color: var(--text-muted);
 }
 
 .empty-state h2 {
-  color: #fff;
-  font-size: 13px;
-  margin-bottom: 4px;
+  font-family: var(--font-heading);
+  color: var(--xorq-cloud);
+  font-size: 20px;
+  font-weight: 400;
+  margin-bottom: 6px;
+  letter-spacing: -0.02em;
+}
+
+.empty-state code {
+  background: var(--badge-bg);
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  color: var(--accent);
+  border: 1px solid var(--border);
 }

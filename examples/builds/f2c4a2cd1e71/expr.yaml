@@ -1,0 +1,2184 @@
+definitions:
+  dtypes:
+    dtype_2477faedcb32:
+      op: DataType
+      type: Float64
+      nullable:
+        op: bool
+        value: true
+    dtype_596db6c249de:
+      op: DataType
+      type: Decimal
+      precision:
+        op: int
+        value: 38
+      scale:
+        op: int
+        value: 9
+      nullable:
+        op: bool
+        value: true
+    dtype_1c0ba5184c57:
+      op: DataType
+      type: Int16
+      nullable:
+        op: bool
+        value: true
+    dtype_b10497e9b395:
+      op: DataType
+      type: String
+      nullable:
+        op: bool
+        value: true
+    dtype_99c62bfe771f:
+      op: DataType
+      type: Int64
+      nullable:
+        op: bool
+        value: true
+    dtype_412c64af1deb:
+      op: DataType
+      type: Boolean
+      nullable:
+        op: bool
+        value: true
+    dtype_beeebde84260:
+      op: DataType
+      type: Struct
+      fields:
+        op: FrozenOrderedDict
+        feature_0:
+          dtype_ref: dtype_2477faedcb32
+        feature_1:
+          dtype_ref: dtype_2477faedcb32
+        feature_2:
+          dtype_ref: dtype_2477faedcb32
+        feature_3:
+          dtype_ref: dtype_2477faedcb32
+        feature_4:
+          dtype_ref: dtype_2477faedcb32
+        feature_5:
+          dtype_ref: dtype_2477faedcb32
+        feature_6:
+          dtype_ref: dtype_2477faedcb32
+        feature_7:
+          dtype_ref: dtype_2477faedcb32
+        feature_8:
+          dtype_ref: dtype_2477faedcb32
+        feature_9:
+          dtype_ref: dtype_2477faedcb32
+      nullable:
+        op: bool
+        value: true
+    dtype_d7a3617bc05d:
+      op: DataType
+      type: Int8
+      nullable:
+        op: bool
+        value: true
+    dtype_6a14bef2f11e:
+      op: DataType
+      type: Binary
+      nullable:
+        op: bool
+        value: true
+  nodes:
+    '@read_18160e0052a3':
+      op: Read
+      method_name: read_parquet
+      name: regression_data
+      profile: 81460d8b971730c8f27ccbff374e2e79_1
+      read_kwargs:
+      - - path
+        - builds/f2c4a2cd1e71/database_tables/feb8c295dfdbf8f1084eb806f427a190.parquet
+      - - table_name
+        - regression_data
+      normalize_method: gAWVWAAAAAAAAACMNXhvcnEuY29tbW9uLnV0aWxzLmRhc2tfbm9ybWFsaXplLmRhc2tfbm9ybWFsaXplX3V0aWxzlIwabm9ybWFsaXplX3JlYWRfcGF0aF9tZDVzdW2Uk5Qu
+      schema_ref: schema_7ce90dbcaac1
+      snapshot_hash: 18160e0052a35527c0a536169de1fabe
+    '@filter_b280bb0e682e':
+      op: Filter
+      parent:
+        node_ref: '@read_18160e0052a3'
+      predicates:
+      - op: LessEqual
+        left:
+          op: Multiply
+          left:
+            op: Cast
+            arg:
+              op: Literal
+              value: 0.8
+              type:
+                dtype_ref: dtype_2477faedcb32
+            to:
+              dtype_ref: dtype_596db6c249de
+            type:
+              dtype_ref: dtype_596db6c249de
+          right:
+            op: Literal
+            value: 10000
+            type:
+              dtype_ref: dtype_1c0ba5184c57
+          type:
+            dtype_ref: dtype_596db6c249de
+        right:
+          op: Modulus
+          left:
+            op: Abs
+            arg:
+              op: Hash
+              arg:
+                op: Alias
+                type:
+                  dtype_ref: dtype_b10497e9b395
+                args:
+                - op: StringConcat
+                  arg:
+                    op: tuple
+                    values:
+                    - op: StringJoin
+                      arg:
+                        op: tuple
+                        values:
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: feature_0
+                            relation:
+                              node_ref: '@read_18160e0052a3'
+                            type:
+                              dtype_ref: dtype_2477faedcb32
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: feature_1
+                            relation:
+                              node_ref: '@read_18160e0052a3'
+                            type:
+                              dtype_ref: dtype_2477faedcb32
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: feature_2
+                            relation:
+                              node_ref: '@read_18160e0052a3'
+                            type:
+                              dtype_ref: dtype_2477faedcb32
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: feature_3
+                            relation:
+                              node_ref: '@read_18160e0052a3'
+                            type:
+                              dtype_ref: dtype_2477faedcb32
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: feature_4
+                            relation:
+                              node_ref: '@read_18160e0052a3'
+                            type:
+                              dtype_ref: dtype_2477faedcb32
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: feature_5
+                            relation:
+                              node_ref: '@read_18160e0052a3'
+                            type:
+                              dtype_ref: dtype_2477faedcb32
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: feature_6
+                            relation:
+                              node_ref: '@read_18160e0052a3'
+                            type:
+                              dtype_ref: dtype_2477faedcb32
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: feature_7
+                            relation:
+                              node_ref: '@read_18160e0052a3'
+                            type:
+                              dtype_ref: dtype_2477faedcb32
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: feature_8
+                            relation:
+                              node_ref: '@read_18160e0052a3'
+                            type:
+                              dtype_ref: dtype_2477faedcb32
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: feature_9
+                            relation:
+                              node_ref: '@read_18160e0052a3'
+                            type:
+                              dtype_ref: dtype_2477faedcb32
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: target
+                            relation:
+                              node_ref: '@read_18160e0052a3'
+                            type:
+                              dtype_ref: dtype_2477faedcb32
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                      sep:
+                        op: Literal
+                        value: ','
+                        type:
+                          dtype_ref: dtype_b10497e9b395
+                      type:
+                        dtype_ref: dtype_b10497e9b395
+                    - op: Literal
+                      value: '16157387885063800092468972531095442600227637936690303362357377535130907802013'
+                      type:
+                        dtype_ref: dtype_b10497e9b395
+                  type:
+                    dtype_ref: dtype_b10497e9b395
+                - op: str
+                  value: _ff2ae518fd206cdfcff942c45ba00388
+              type:
+                dtype_ref: dtype_99c62bfe771f
+            type:
+              dtype_ref: dtype_99c62bfe771f
+          right:
+            op: Literal
+            value: 10000
+            type:
+              dtype_ref: dtype_1c0ba5184c57
+          type:
+            dtype_ref: dtype_99c62bfe771f
+        type:
+          dtype_ref: dtype_412c64af1deb
+      - op: Literal
+        value: true
+        type:
+          dtype_ref: dtype_412c64af1deb
+      snapshot_hash: b280bb0e682ea7ecdea40f01d0db053d
+    '@tag_43fe7b54941e':
+      op: Tag
+      parent:
+        node_ref: '@filter_b280bb0e682e'
+      metadata:
+        op: FrozenOrderedDict
+        tag:
+          op: str
+          value: train_test_split
+        split_i:
+          op: int
+          value: 1
+        split_size:
+          op: float
+          value: '0.2'
+        test_sizes:
+          op: tuple
+          values:
+          - op: float
+            value: '0.8'
+          - op: float
+            value: '0.2'
+        num_buckets:
+          op: int
+          value: 10000
+        unique_key:
+          op: tuple
+          values:
+          - op: str
+            value: feature_1
+          - op: str
+            value: feature_3
+          - op: str
+            value: target
+          - op: str
+            value: feature_6
+          - op: str
+            value: feature_5
+          - op: str
+            value: feature_2
+          - op: str
+            value: feature_7
+          - op: str
+            value: feature_4
+          - op: str
+            value: feature_0
+          - op: str
+            value: feature_9
+          - op: str
+            value: feature_8
+      schema_ref: schema_7ce90dbcaac1
+      snapshot_hash: 43fe7b54941ed34dafc98e6fe9b3f157
+    '@filter_0e8da836dcf3':
+      op: Filter
+      parent:
+        node_ref: '@read_18160e0052a3'
+      predicates:
+      - op: LessEqual
+        left:
+          op: Multiply
+          left:
+            op: Cast
+            arg:
+              op: Literal
+              value: 0
+              type:
+                dtype_ref: dtype_d7a3617bc05d
+            to:
+              dtype_ref: dtype_596db6c249de
+            type:
+              dtype_ref: dtype_596db6c249de
+          right:
+            op: Literal
+            value: 10000
+            type:
+              dtype_ref: dtype_1c0ba5184c57
+          type:
+            dtype_ref: dtype_596db6c249de
+        right:
+          op: Modulus
+          left:
+            op: Abs
+            arg:
+              op: Hash
+              arg:
+                op: Alias
+                type:
+                  dtype_ref: dtype_b10497e9b395
+                args:
+                - op: StringConcat
+                  arg:
+                    op: tuple
+                    values:
+                    - op: StringJoin
+                      arg:
+                        op: tuple
+                        values:
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: feature_0
+                            relation:
+                              node_ref: '@read_18160e0052a3'
+                            type:
+                              dtype_ref: dtype_2477faedcb32
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: feature_1
+                            relation:
+                              node_ref: '@read_18160e0052a3'
+                            type:
+                              dtype_ref: dtype_2477faedcb32
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: feature_2
+                            relation:
+                              node_ref: '@read_18160e0052a3'
+                            type:
+                              dtype_ref: dtype_2477faedcb32
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: feature_3
+                            relation:
+                              node_ref: '@read_18160e0052a3'
+                            type:
+                              dtype_ref: dtype_2477faedcb32
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: feature_4
+                            relation:
+                              node_ref: '@read_18160e0052a3'
+                            type:
+                              dtype_ref: dtype_2477faedcb32
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: feature_5
+                            relation:
+                              node_ref: '@read_18160e0052a3'
+                            type:
+                              dtype_ref: dtype_2477faedcb32
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: feature_6
+                            relation:
+                              node_ref: '@read_18160e0052a3'
+                            type:
+                              dtype_ref: dtype_2477faedcb32
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: feature_7
+                            relation:
+                              node_ref: '@read_18160e0052a3'
+                            type:
+                              dtype_ref: dtype_2477faedcb32
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: feature_8
+                            relation:
+                              node_ref: '@read_18160e0052a3'
+                            type:
+                              dtype_ref: dtype_2477faedcb32
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: feature_9
+                            relation:
+                              node_ref: '@read_18160e0052a3'
+                            type:
+                              dtype_ref: dtype_2477faedcb32
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: target
+                            relation:
+                              node_ref: '@read_18160e0052a3'
+                            type:
+                              dtype_ref: dtype_2477faedcb32
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                      sep:
+                        op: Literal
+                        value: ','
+                        type:
+                          dtype_ref: dtype_b10497e9b395
+                      type:
+                        dtype_ref: dtype_b10497e9b395
+                    - op: Literal
+                      value: '16157387885063800092468972531095442600227637936690303362357377535130907802013'
+                      type:
+                        dtype_ref: dtype_b10497e9b395
+                  type:
+                    dtype_ref: dtype_b10497e9b395
+                - op: str
+                  value: _ff2ae518fd206cdfcff942c45ba00388
+              type:
+                dtype_ref: dtype_99c62bfe771f
+            type:
+              dtype_ref: dtype_99c62bfe771f
+          right:
+            op: Literal
+            value: 10000
+            type:
+              dtype_ref: dtype_1c0ba5184c57
+          type:
+            dtype_ref: dtype_99c62bfe771f
+        type:
+          dtype_ref: dtype_412c64af1deb
+      - op: Less
+        left:
+          op: Modulus
+          left:
+            op: Abs
+            arg:
+              op: Hash
+              arg:
+                op: Alias
+                type:
+                  dtype_ref: dtype_b10497e9b395
+                args:
+                - op: StringConcat
+                  arg:
+                    op: tuple
+                    values:
+                    - op: StringJoin
+                      arg:
+                        op: tuple
+                        values:
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: feature_0
+                            relation:
+                              node_ref: '@read_18160e0052a3'
+                            type:
+                              dtype_ref: dtype_2477faedcb32
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: feature_1
+                            relation:
+                              node_ref: '@read_18160e0052a3'
+                            type:
+                              dtype_ref: dtype_2477faedcb32
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: feature_2
+                            relation:
+                              node_ref: '@read_18160e0052a3'
+                            type:
+                              dtype_ref: dtype_2477faedcb32
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: feature_3
+                            relation:
+                              node_ref: '@read_18160e0052a3'
+                            type:
+                              dtype_ref: dtype_2477faedcb32
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: feature_4
+                            relation:
+                              node_ref: '@read_18160e0052a3'
+                            type:
+                              dtype_ref: dtype_2477faedcb32
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: feature_5
+                            relation:
+                              node_ref: '@read_18160e0052a3'
+                            type:
+                              dtype_ref: dtype_2477faedcb32
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: feature_6
+                            relation:
+                              node_ref: '@read_18160e0052a3'
+                            type:
+                              dtype_ref: dtype_2477faedcb32
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: feature_7
+                            relation:
+                              node_ref: '@read_18160e0052a3'
+                            type:
+                              dtype_ref: dtype_2477faedcb32
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: feature_8
+                            relation:
+                              node_ref: '@read_18160e0052a3'
+                            type:
+                              dtype_ref: dtype_2477faedcb32
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: feature_9
+                            relation:
+                              node_ref: '@read_18160e0052a3'
+                            type:
+                              dtype_ref: dtype_2477faedcb32
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: target
+                            relation:
+                              node_ref: '@read_18160e0052a3'
+                            type:
+                              dtype_ref: dtype_2477faedcb32
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                      sep:
+                        op: Literal
+                        value: ','
+                        type:
+                          dtype_ref: dtype_b10497e9b395
+                      type:
+                        dtype_ref: dtype_b10497e9b395
+                    - op: Literal
+                      value: '16157387885063800092468972531095442600227637936690303362357377535130907802013'
+                      type:
+                        dtype_ref: dtype_b10497e9b395
+                  type:
+                    dtype_ref: dtype_b10497e9b395
+                - op: str
+                  value: _ff2ae518fd206cdfcff942c45ba00388
+              type:
+                dtype_ref: dtype_99c62bfe771f
+            type:
+              dtype_ref: dtype_99c62bfe771f
+          right:
+            op: Literal
+            value: 10000
+            type:
+              dtype_ref: dtype_1c0ba5184c57
+          type:
+            dtype_ref: dtype_99c62bfe771f
+        right:
+          op: Multiply
+          left:
+            op: Cast
+            arg:
+              op: Literal
+              value: 0.8
+              type:
+                dtype_ref: dtype_2477faedcb32
+            to:
+              dtype_ref: dtype_596db6c249de
+            type:
+              dtype_ref: dtype_596db6c249de
+          right:
+            op: Literal
+            value: 10000
+            type:
+              dtype_ref: dtype_1c0ba5184c57
+          type:
+            dtype_ref: dtype_596db6c249de
+        type:
+          dtype_ref: dtype_412c64af1deb
+      snapshot_hash: 0e8da836dcf32dee12b07d5bab51e7ad
+    '@tag_5e984a4daac8':
+      op: Tag
+      parent:
+        node_ref: '@filter_0e8da836dcf3'
+      metadata:
+        op: FrozenOrderedDict
+        tag:
+          op: str
+          value: train_test_split
+        split_i:
+          op: int
+          value: 0
+        split_size:
+          op: float
+          value: '0.8'
+        test_sizes:
+          op: tuple
+          values:
+          - op: float
+            value: '0.8'
+          - op: float
+            value: '0.2'
+        num_buckets:
+          op: int
+          value: 10000
+        unique_key:
+          op: tuple
+          values:
+          - op: str
+            value: feature_1
+          - op: str
+            value: feature_3
+          - op: str
+            value: target
+          - op: str
+            value: feature_6
+          - op: str
+            value: feature_5
+          - op: str
+            value: feature_2
+          - op: str
+            value: feature_7
+          - op: str
+            value: feature_4
+          - op: str
+            value: feature_0
+          - op: str
+            value: feature_9
+          - op: str
+            value: feature_8
+      schema_ref: schema_7ce90dbcaac1
+      snapshot_hash: 5e984a4daac84d15c39002cf3e7d87c6
+    '@project_f069325521f6':
+      op: Project
+      parent:
+        node_ref: '@tag_43fe7b54941e'
+      values:
+        target:
+          op: Field
+          name: target
+          relation:
+            node_ref: '@tag_43fe7b54941e'
+          type:
+            dtype_ref: dtype_2477faedcb32
+        transformed:
+          op: ExprScalarUDF
+          class_name: _transformed
+          kwargs:
+            op: FrozenOrderedDict
+            feature_0:
+              op: Field
+              name: feature_0
+              relation:
+                node_ref: '@tag_43fe7b54941e'
+              type:
+                dtype_ref: dtype_2477faedcb32
+            feature_1:
+              op: Field
+              name: feature_1
+              relation:
+                node_ref: '@tag_43fe7b54941e'
+              type:
+                dtype_ref: dtype_2477faedcb32
+            feature_2:
+              op: Field
+              name: feature_2
+              relation:
+                node_ref: '@tag_43fe7b54941e'
+              type:
+                dtype_ref: dtype_2477faedcb32
+            feature_3:
+              op: Field
+              name: feature_3
+              relation:
+                node_ref: '@tag_43fe7b54941e'
+              type:
+                dtype_ref: dtype_2477faedcb32
+            feature_4:
+              op: Field
+              name: feature_4
+              relation:
+                node_ref: '@tag_43fe7b54941e'
+              type:
+                dtype_ref: dtype_2477faedcb32
+            feature_5:
+              op: Field
+              name: feature_5
+              relation:
+                node_ref: '@tag_43fe7b54941e'
+              type:
+                dtype_ref: dtype_2477faedcb32
+            feature_6:
+              op: Field
+              name: feature_6
+              relation:
+                node_ref: '@tag_43fe7b54941e'
+              type:
+                dtype_ref: dtype_2477faedcb32
+            feature_7:
+              op: Field
+              name: feature_7
+              relation:
+                node_ref: '@tag_43fe7b54941e'
+              type:
+                dtype_ref: dtype_2477faedcb32
+            feature_8:
+              op: Field
+              name: feature_8
+              relation:
+                node_ref: '@tag_43fe7b54941e'
+              type:
+                dtype_ref: dtype_2477faedcb32
+            feature_9:
+              op: Field
+              name: feature_9
+              relation:
+                node_ref: '@tag_43fe7b54941e'
+              type:
+                dtype_ref: dtype_2477faedcb32
+          meta:
+            op: FrozenOrderedDict
+            dtype:
+              dtype_ref: dtype_beeebde84260
+            __input_type__:
+              op: InputType
+              name: PYARROW
+            __config__:
+              op: FrozenOrderedDict
+              computed_kwargs_expr:
+                op: AggUDF
+                class_name: dumps_of__inner_fit_0
+                kwargs:
+                  op: FrozenOrderedDict
+                  feature_0:
+                    op: Field
+                    name: feature_0
+                    relation:
+                      node_ref: '@tag_5e984a4daac8'
+                    type:
+                      dtype_ref: dtype_2477faedcb32
+                  feature_1:
+                    op: Field
+                    name: feature_1
+                    relation:
+                      node_ref: '@tag_5e984a4daac8'
+                    type:
+                      dtype_ref: dtype_2477faedcb32
+                  feature_2:
+                    op: Field
+                    name: feature_2
+                    relation:
+                      node_ref: '@tag_5e984a4daac8'
+                    type:
+                      dtype_ref: dtype_2477faedcb32
+                  feature_3:
+                    op: Field
+                    name: feature_3
+                    relation:
+                      node_ref: '@tag_5e984a4daac8'
+                    type:
+                      dtype_ref: dtype_2477faedcb32
+                  feature_4:
+                    op: Field
+                    name: feature_4
+                    relation:
+                      node_ref: '@tag_5e984a4daac8'
+                    type:
+                      dtype_ref: dtype_2477faedcb32
+                  feature_5:
+                    op: Field
+                    name: feature_5
+                    relation:
+                      node_ref: '@tag_5e984a4daac8'
+                    type:
+                      dtype_ref: dtype_2477faedcb32
+                  feature_6:
+                    op: Field
+                    name: feature_6
+                    relation:
+                      node_ref: '@tag_5e984a4daac8'
+                    type:
+                      dtype_ref: dtype_2477faedcb32
+                  feature_7:
+                    op: Field
+                    name: feature_7
+                    relation:
+                      node_ref: '@tag_5e984a4daac8'
+                    type:
+                      dtype_ref: dtype_2477faedcb32
+                  feature_8:
+                    op: Field
+                    name: feature_8
+                    relation:
+                      node_ref: '@tag_5e984a4daac8'
+                    type:
+                      dtype_ref: dtype_2477faedcb32
+                  feature_9:
+                    op: Field
+                    name: feature_9
+                    relation:
+                      node_ref: '@tag_5e984a4daac8'
+                    type:
+                      dtype_ref: dtype_2477faedcb32
+                  target:
+                    op: Field
+                    name: target
+                    relation:
+                      node_ref: '@tag_5e984a4daac8'
+                    type:
+                      dtype_ref: dtype_2477faedcb32
+                meta:
+                  op: FrozenOrderedDict
+                  dtype:
+                    dtype_ref: dtype_6a14bef2f11e
+                  __config__:
+                    op: FrozenOrderedDict
+                    fn:
+                      op: Callable
+                      pickled_fn: gAWVtwIAAAAAAACMD3Rvb2x6LmZ1bmN0b29sepSMB0NvbXBvc2WUk5QpgZRoAIwOX3Jlc3RvcmVfY3VycnmUk5QoaACMBWN1cnJ5lJOUjDB4b3JxLmV4cHIubWwuZml0X2xpYjpEZWZlcnJlZEZpdE90aGVyLl9pbm5lcl9maXSUKX2UKIwDZml0lGgFKGgHjCV4b3JxLmV4cHIubWwuZml0X2xpYjpmaXRfc2tsZWFybl9hcmdzlCl9lCiMA2Nsc5SMG3NrbGVhcm4ucHJlcHJvY2Vzc2luZy5fZGF0YZSMDlN0YW5kYXJkU2NhbGVylJOUjAZwYXJhbXOUjARjb3B5lIiGlIwJd2l0aF9tZWFulIiGlIwId2l0aF9zdGSUiIaUh5R1KIwHX19kb2NfX5ROhpSMCF9fbmFtZV9flIwQZml0X3NrbGVhcm5fYXJnc5SGlIwKX19tb2R1bGVfX5SMFHhvcnEuZXhwci5tbC5maXRfbGlilIaUjAxfX3F1YWxuYW1lX1+UaByGlIwRX2hhc191bmtub3duX2FyZ3OUToaUdJSJdJRSlIwGdGFyZ2V0lGgojAhmZWF0dXJlc5QojAlmZWF0dXJlXzCUjAlmZWF0dXJlXzGUjAlmZWF0dXJlXzKUjAlmZWF0dXJlXzOUjAlmZWF0dXJlXzSUjAlmZWF0dXJlXzWUjAlmZWF0dXJlXzaUjAlmZWF0dXJlXzeUjAlmZWF0dXJlXziUjAlmZWF0dXJlXzmUdJSMDGVuY29kZWRfY29sc5QpdShoGU6GlGgbjApfaW5uZXJfZml0lIaUaB5oH4aUaCGMG0RlZmVycmVkRml0T3RoZXIuX2lubmVyX2ZpdJSGlGgjToaUdJSJdJRSlIwXY2xvdWRwaWNrbGUuY2xvdWRwaWNrbGWUjAVkdW1wc5STlIWUhpRiLg==
+                  __input_type__:
+                    op: InputType
+                    name: PYARROW
+                  __udf_namespace__:
+                    op: Namespace
+                    dict:
+                      catalog: null
+                      database: null
+                  __module__:
+                    op: str
+                    value: toolz.functoolz
+                  __func_name__:
+                    op: str
+                    value: _fit_transfo
+              post_process_fn:
+                op: Callable
+                pickled_fn: gAWVFQAAAAAAAACMB19waWNrbGWUjAVsb2Fkc5STlC4=
+              schema:
+                schema_ref: schema_cb389b076c24
+              fn:
+                op: Callable
+                pickled_fn: gAWVhgkAAAAAAACMD3Rvb2x6LmZ1bmN0b29sepSMDl9yZXN0b3JlX2N1cnJ5lJOUKGgAjAVjdXJyeZSTlIwyeG9ycS5leHByLm1sLmZpdF9saWI6RGVmZXJyZWRGaXRPdGhlci5faW5uZXJfb3RoZXKUKX2UKIwFb3RoZXKUaAIoaASMLXhvcnEuZXhwci5tbC5maXRfbGliOnRyYW5zZm9ybV9za2xlYXJuX3N0cnVjdJRoAihoBIwXY2xvdWRwaWNrbGUuY2xvdWRwaWNrbGWUjA5fbWFrZV9mdW5jdGlvbpSTlChoCYwNX2J1aWx0aW5fdHlwZZSTlIwIQ29kZVR5cGWUhZRSlChLA0sASwBLBUsFSwNDmJUAUwFTAEsAbgNVACIAVQE1AQAAAAAAAG4EVQNSAwAAAAAAAAAAAAAAAAAAAAAAAFghUgQAAAAAAAAAAAAAAAAAAAAAAABTAjkCUgcAAAAAAAAAAAAAAAAAAAAAAABVBFIIAAAAAAAAAAAAAAAAAAAAAAAANQEAAAAAAABSCwAAAAAAAAAAAAAAAAAAAAAAAFMDUwQ5ASQAlChOSwCMB2NvbHVtbnOUhZSMB3JlY29yZHOUjAZvcmllbnSUhZR0lCiMBnBhbmRhc5SMCURhdGFGcmFtZZSMBmZpZWxkc5SMBmFzdHlwZZSMBWR0eXBllIwHdG9fZGljdJR0lCiMA2Nsc5SMBnN0cnVjdJSMBWFycmF5lIwCcGSUjARzZWxmlHSUjDEvVXNlcnMvcGFkZHkveG9ycS9weXRob24veG9ycS9leHByL21sL3N0cnVjdGVyLnB5lIwNY29udmVydF9hcnJheZSMFlN0cnVjdGVyLmNvbnZlcnRfYXJyYXmUTYMBQ0GAAPMGAAkc4Q8SkDaLe4gE4AwOj0yJTJgVrw2pDYhM0Aw23w0TiVaQRJdKkUrTDR/fDRSJV5hJiFfQDSbwBwQJCpRDAJQpKXSUUpR9lCiMC19fcGFja2FnZV9flIwMeG9ycS5leHByLm1slIwIX19uYW1lX1+UjBV4b3JxLmV4cHIubWwuc3RydWN0ZXKUjAhfX2ZpbGVfX5SMMS9Vc2Vycy9wYWRkeS94b3JxL3B5dGhvbi94b3JxL2V4cHIvbWwvc3RydWN0ZXIucHmUdU5OTnSUUpRoCYwSX2Z1bmN0aW9uX3NldHN0YXRllJOUaDR9lH2UKGgvjA1jb252ZXJ0X2FycmF5lIwMX19xdWFsbmFtZV9flIwWU3RydWN0ZXIuY29udmVydF9hcnJheZSMD19fYW5ub3RhdGlvbnNfX5R9lIwOX19rd2RlZmF1bHRzX1+UTowMX19kZWZhdWx0c19flE6MCl9fbW9kdWxlX1+UaDCMB19fZG9jX1+UTowLX19jbG9zdXJlX1+UTowXX2Nsb3VkcGlja2xlX3N1Ym1vZHVsZXOUXZSMC19fZ2xvYmFsc19flH2UdYaUhlIwaDCMCFN0cnVjdGVylJOUaA2MCk1ldGhvZFR5cGWUhZRSlGgLKGgQKEsCSwBLAEsCSwVKAwAAAUNaPgGVAFUAUgAAAAAAAAAAAAAAAAAAAAAAAABSAwAAAAAAAAAAAAAAAAAAAAAAAFgBNQIAAAAAAABuAVsEAAAAAAAAAABUAlUAXQwAACIAUwEwAFUBRAE2ASQAlE4phpQojA1fX3NpZ25hdHVyZV9flIwPdmFsaWRhdGVfbm9iaW5klIwFc3VwZXKUjApfX2NyZWF0ZV9flHSUaB+MBmt3YXJnc5SGlIw7L1VzZXJzL3BhZGR5L3hvcnEvcHl0aG9uL3hvcnEvdmVuZG9yL2liaXMvY29tbW9uL2dyb3VuZHMucHmUjAxfX3JlY3JlYXRlX1+UjBZBbm5vdGFibGUuX19yZWNyZWF0ZV9flEt6Qy74gADwBgASFdcRItERItcRMtERMrAz0xE/iAbcDxSJd9IPIdEPK6BG0Q8r0AgrlGgpjAlfX2NsYXNzX1+UhZQpdJRSlH2UKGgtjBd4b3JxLnZlbmRvci5pYmlzLmNvbW1vbpRoL4wfeG9ycS52ZW5kb3IuaWJpcy5jb21tb24uZ3JvdW5kc5RoMYw7L1VzZXJzL3BhZGR5L3hvcnEvcHl0aG9uL3hvcnEvdmVuZG9yL2liaXMvY29tbW9uL2dyb3VuZHMucHmUdU5OaAmMEF9tYWtlX2VtcHR5X2NlbGyUk5QpUpSFlHSUUpRoNmhnfZR9lChoL4wMX19yZWNyZWF0ZV9flGg6jBZBbm5vdGFibGUuX19yZWNyZWF0ZV9flGg8fZQoaFSMA0FueZSMBnJldHVybpSMBFNlbGaUdWg+Tmg/TmhAaGBoQU5oQmgJjApfbWFrZV9jZWxslJOUaGCMCUFubm90YWJsZZSTlIWUUpSFlGhDXZRoRX2UdYaUhlIwjCR4b3JxLnZlbmRvci5pYmlzLmV4cHIuZGF0YXR5cGVzLmNvcmWUjAZTdHJ1Y3SUk5SGlFKUfZQoaBqMI3hvcnEudmVuZG9yLmliaXMuY29tbW9uLmNvbGxlY3Rpb25zlIwRRnJvemVuT3JkZXJlZERpY3SUk5R9lCiMCWZlYXR1cmVfMJRoTGhnaHqMB0Zsb2F0NjSUk5SGlFKUfZSMCG51bGxhYmxllIhzhZRSlIwJZmVhdHVyZV8xlGiMjAlmZWF0dXJlXzKUaIyMCWZlYXR1cmVfM5RojIwJZmVhdHVyZV80lGiMjAlmZWF0dXJlXzWUaIyMCWZlYXR1cmVfNpRojIwJZmVhdHVyZV83lGiMjAlmZWF0dXJlXziUaIyMCWZlYXR1cmVfOZRojHWFlFKUaIqIdYWUUpSGlH2UKGhBToaUaC+MDWNvbnZlcnRfYXJyYXmUhpRoQGgwhpRoOmgnhpSMEV9oYXNfdW5rbm93bl9hcmdzlE6GlHSUTnSUUpSFlH2UKGhBToaUaC+MGHRyYW5zZm9ybV9za2xlYXJuX3N0cnVjdJSGlGhAjBR4b3JxLmV4cHIubWwuZml0X2xpYpSGlGg6aKmGlGihToaUdJSJdJRSlIwIZmVhdHVyZXOUKGiEaI1ojmiPaJBokWiSaJNolGiVdJSMC3JldHVybl90eXBllGiZjAxlbmNvZGVkX2NvbHOUKXUoaEFOhpRoL4wMX2lubmVyX290aGVylIaUaEBoq4aUaDqMHURlZmVycmVkRml0T3RoZXIuX2lubmVyX290aGVylIaUaKFOhpR0lIl0lFKULg==
+            __udf_namespace__:
+              op: Namespace
+              dict:
+                catalog: null
+                database: null
+            __module__:
+              op: str
+              value: xorq.expr.ml.fit_lib
+            __func_name__:
+              op: str
+              value: _transformed
+      snapshot_hash: f069325521f638c54352f679eeccc3bb
+    '@project_69ac37236251':
+      op: Project
+      parent:
+        node_ref: '@project_f069325521f6'
+      values:
+        target:
+          op: Field
+          name: target
+          relation:
+            node_ref: '@project_f069325521f6'
+          type:
+            dtype_ref: dtype_2477faedcb32
+        feature_0:
+          op: StructField
+          args:
+          - op: Field
+            name: transformed
+            relation:
+              node_ref: '@project_f069325521f6'
+            type:
+              dtype_ref: dtype_beeebde84260
+          - op: str
+            value: feature_0
+        feature_1:
+          op: StructField
+          args:
+          - op: Field
+            name: transformed
+            relation:
+              node_ref: '@project_f069325521f6'
+            type:
+              dtype_ref: dtype_beeebde84260
+          - op: str
+            value: feature_1
+        feature_2:
+          op: StructField
+          args:
+          - op: Field
+            name: transformed
+            relation:
+              node_ref: '@project_f069325521f6'
+            type:
+              dtype_ref: dtype_beeebde84260
+          - op: str
+            value: feature_2
+        feature_3:
+          op: StructField
+          args:
+          - op: Field
+            name: transformed
+            relation:
+              node_ref: '@project_f069325521f6'
+            type:
+              dtype_ref: dtype_beeebde84260
+          - op: str
+            value: feature_3
+        feature_4:
+          op: StructField
+          args:
+          - op: Field
+            name: transformed
+            relation:
+              node_ref: '@project_f069325521f6'
+            type:
+              dtype_ref: dtype_beeebde84260
+          - op: str
+            value: feature_4
+        feature_5:
+          op: StructField
+          args:
+          - op: Field
+            name: transformed
+            relation:
+              node_ref: '@project_f069325521f6'
+            type:
+              dtype_ref: dtype_beeebde84260
+          - op: str
+            value: feature_5
+        feature_6:
+          op: StructField
+          args:
+          - op: Field
+            name: transformed
+            relation:
+              node_ref: '@project_f069325521f6'
+            type:
+              dtype_ref: dtype_beeebde84260
+          - op: str
+            value: feature_6
+        feature_7:
+          op: StructField
+          args:
+          - op: Field
+            name: transformed
+            relation:
+              node_ref: '@project_f069325521f6'
+            type:
+              dtype_ref: dtype_beeebde84260
+          - op: str
+            value: feature_7
+        feature_8:
+          op: StructField
+          args:
+          - op: Field
+            name: transformed
+            relation:
+              node_ref: '@project_f069325521f6'
+            type:
+              dtype_ref: dtype_beeebde84260
+          - op: str
+            value: feature_8
+        feature_9:
+          op: StructField
+          args:
+          - op: Field
+            name: transformed
+            relation:
+              node_ref: '@project_f069325521f6'
+            type:
+              dtype_ref: dtype_beeebde84260
+          - op: str
+            value: feature_9
+      snapshot_hash: 69ac372362514aa836ecb840fa388142
+    '@tag_102c4900c7af':
+      op: Tag
+      parent:
+        node_ref: '@project_69ac37236251'
+      metadata:
+        op: FrozenOrderedDict
+        tag:
+          op: str
+          value: FittedStep-transform
+        typ:
+          op: Callable
+          pickled_fn: gAWVMgAAAAAAAACMG3NrbGVhcm4ucHJlcHJvY2Vzc2luZy5fZGF0YZSMDlN0YW5kYXJkU2NhbGVylJOULg==
+        name:
+          op: str
+          value: scaler
+        params_tuple:
+          op: tuple
+          values:
+          - op: tuple
+            values:
+            - op: str
+              value: copy
+            - op: bool
+              value: true
+          - op: tuple
+            values:
+            - op: str
+              value: with_mean
+            - op: bool
+              value: true
+          - op: tuple
+            values:
+            - op: str
+              value: with_std
+            - op: bool
+              value: true
+        features:
+          op: tuple
+          values:
+          - op: str
+            value: feature_0
+          - op: str
+            value: feature_1
+          - op: str
+            value: feature_2
+          - op: str
+            value: feature_3
+          - op: str
+            value: feature_4
+          - op: str
+            value: feature_5
+          - op: str
+            value: feature_6
+          - op: str
+            value: feature_7
+          - op: str
+            value: feature_8
+          - op: str
+            value: feature_9
+      schema_ref: schema_7ce90dbcaac1
+      snapshot_hash: 102c4900c7afde490fda60263c6a0617
+    '@remotetable_1763a90165a7':
+      op: RemoteTable
+      table: 529b83d7bd1bb3a80ffb3eb90880270f
+      profile: 81460d8b971730c8f27ccbff374e2e79_3
+      remote_expr:
+        node_ref: '@tag_102c4900c7af'
+      schema_ref: schema_7ce90dbcaac1
+      snapshot_hash: 1763a90165a7627a5326e3b419e7f930
+    '@project_9ec01b2a3a39':
+      op: Project
+      parent:
+        node_ref: '@tag_5e984a4daac8'
+      values:
+        target:
+          op: Field
+          name: target
+          relation:
+            node_ref: '@tag_5e984a4daac8'
+          type:
+            dtype_ref: dtype_2477faedcb32
+        transformed:
+          op: ExprScalarUDF
+          class_name: _transformed
+          kwargs:
+            op: FrozenOrderedDict
+            feature_0:
+              op: Field
+              name: feature_0
+              relation:
+                node_ref: '@tag_5e984a4daac8'
+              type:
+                dtype_ref: dtype_2477faedcb32
+            feature_1:
+              op: Field
+              name: feature_1
+              relation:
+                node_ref: '@tag_5e984a4daac8'
+              type:
+                dtype_ref: dtype_2477faedcb32
+            feature_2:
+              op: Field
+              name: feature_2
+              relation:
+                node_ref: '@tag_5e984a4daac8'
+              type:
+                dtype_ref: dtype_2477faedcb32
+            feature_3:
+              op: Field
+              name: feature_3
+              relation:
+                node_ref: '@tag_5e984a4daac8'
+              type:
+                dtype_ref: dtype_2477faedcb32
+            feature_4:
+              op: Field
+              name: feature_4
+              relation:
+                node_ref: '@tag_5e984a4daac8'
+              type:
+                dtype_ref: dtype_2477faedcb32
+            feature_5:
+              op: Field
+              name: feature_5
+              relation:
+                node_ref: '@tag_5e984a4daac8'
+              type:
+                dtype_ref: dtype_2477faedcb32
+            feature_6:
+              op: Field
+              name: feature_6
+              relation:
+                node_ref: '@tag_5e984a4daac8'
+              type:
+                dtype_ref: dtype_2477faedcb32
+            feature_7:
+              op: Field
+              name: feature_7
+              relation:
+                node_ref: '@tag_5e984a4daac8'
+              type:
+                dtype_ref: dtype_2477faedcb32
+            feature_8:
+              op: Field
+              name: feature_8
+              relation:
+                node_ref: '@tag_5e984a4daac8'
+              type:
+                dtype_ref: dtype_2477faedcb32
+            feature_9:
+              op: Field
+              name: feature_9
+              relation:
+                node_ref: '@tag_5e984a4daac8'
+              type:
+                dtype_ref: dtype_2477faedcb32
+          meta:
+            op: FrozenOrderedDict
+            dtype:
+              dtype_ref: dtype_beeebde84260
+            __input_type__:
+              op: InputType
+              name: PYARROW
+            __config__:
+              op: FrozenOrderedDict
+              computed_kwargs_expr:
+                op: AggUDF
+                class_name: dumps_of__inner_fit_0
+                kwargs:
+                  op: FrozenOrderedDict
+                  feature_0:
+                    op: Field
+                    name: feature_0
+                    relation:
+                      node_ref: '@tag_5e984a4daac8'
+                    type:
+                      dtype_ref: dtype_2477faedcb32
+                  feature_1:
+                    op: Field
+                    name: feature_1
+                    relation:
+                      node_ref: '@tag_5e984a4daac8'
+                    type:
+                      dtype_ref: dtype_2477faedcb32
+                  feature_2:
+                    op: Field
+                    name: feature_2
+                    relation:
+                      node_ref: '@tag_5e984a4daac8'
+                    type:
+                      dtype_ref: dtype_2477faedcb32
+                  feature_3:
+                    op: Field
+                    name: feature_3
+                    relation:
+                      node_ref: '@tag_5e984a4daac8'
+                    type:
+                      dtype_ref: dtype_2477faedcb32
+                  feature_4:
+                    op: Field
+                    name: feature_4
+                    relation:
+                      node_ref: '@tag_5e984a4daac8'
+                    type:
+                      dtype_ref: dtype_2477faedcb32
+                  feature_5:
+                    op: Field
+                    name: feature_5
+                    relation:
+                      node_ref: '@tag_5e984a4daac8'
+                    type:
+                      dtype_ref: dtype_2477faedcb32
+                  feature_6:
+                    op: Field
+                    name: feature_6
+                    relation:
+                      node_ref: '@tag_5e984a4daac8'
+                    type:
+                      dtype_ref: dtype_2477faedcb32
+                  feature_7:
+                    op: Field
+                    name: feature_7
+                    relation:
+                      node_ref: '@tag_5e984a4daac8'
+                    type:
+                      dtype_ref: dtype_2477faedcb32
+                  feature_8:
+                    op: Field
+                    name: feature_8
+                    relation:
+                      node_ref: '@tag_5e984a4daac8'
+                    type:
+                      dtype_ref: dtype_2477faedcb32
+                  feature_9:
+                    op: Field
+                    name: feature_9
+                    relation:
+                      node_ref: '@tag_5e984a4daac8'
+                    type:
+                      dtype_ref: dtype_2477faedcb32
+                  target:
+                    op: Field
+                    name: target
+                    relation:
+                      node_ref: '@tag_5e984a4daac8'
+                    type:
+                      dtype_ref: dtype_2477faedcb32
+                meta:
+                  op: FrozenOrderedDict
+                  dtype:
+                    dtype_ref: dtype_6a14bef2f11e
+                  __config__:
+                    op: FrozenOrderedDict
+                    fn:
+                      op: Callable
+                      pickled_fn: gAWVtwIAAAAAAACMD3Rvb2x6LmZ1bmN0b29sepSMB0NvbXBvc2WUk5QpgZRoAIwOX3Jlc3RvcmVfY3VycnmUk5QoaACMBWN1cnJ5lJOUjDB4b3JxLmV4cHIubWwuZml0X2xpYjpEZWZlcnJlZEZpdE90aGVyLl9pbm5lcl9maXSUKX2UKIwDZml0lGgFKGgHjCV4b3JxLmV4cHIubWwuZml0X2xpYjpmaXRfc2tsZWFybl9hcmdzlCl9lCiMA2Nsc5SMG3NrbGVhcm4ucHJlcHJvY2Vzc2luZy5fZGF0YZSMDlN0YW5kYXJkU2NhbGVylJOUjAZwYXJhbXOUjARjb3B5lIiGlIwJd2l0aF9tZWFulIiGlIwId2l0aF9zdGSUiIaUh5R1KIwHX19kb2NfX5ROhpSMCF9fbmFtZV9flIwQZml0X3NrbGVhcm5fYXJnc5SGlIwKX19tb2R1bGVfX5SMFHhvcnEuZXhwci5tbC5maXRfbGlilIaUjAxfX3F1YWxuYW1lX1+UaByGlIwRX2hhc191bmtub3duX2FyZ3OUToaUdJSJdJRSlIwGdGFyZ2V0lGgojAhmZWF0dXJlc5QojAlmZWF0dXJlXzCUjAlmZWF0dXJlXzGUjAlmZWF0dXJlXzKUjAlmZWF0dXJlXzOUjAlmZWF0dXJlXzSUjAlmZWF0dXJlXzWUjAlmZWF0dXJlXzaUjAlmZWF0dXJlXzeUjAlmZWF0dXJlXziUjAlmZWF0dXJlXzmUdJSMDGVuY29kZWRfY29sc5QpdShoGU6GlGgbjApfaW5uZXJfZml0lIaUaB5oH4aUaCGMG0RlZmVycmVkRml0T3RoZXIuX2lubmVyX2ZpdJSGlGgjToaUdJSJdJRSlIwXY2xvdWRwaWNrbGUuY2xvdWRwaWNrbGWUjAVkdW1wc5STlIWUhpRiLg==
+                  __input_type__:
+                    op: InputType
+                    name: PYARROW
+                  __udf_namespace__:
+                    op: Namespace
+                    dict:
+                      catalog: null
+                      database: null
+                  __module__:
+                    op: str
+                    value: toolz.functoolz
+                  __func_name__:
+                    op: str
+                    value: _fit_transfo
+              post_process_fn:
+                op: Callable
+                pickled_fn: gAWVFQAAAAAAAACMB19waWNrbGWUjAVsb2Fkc5STlC4=
+              schema:
+                schema_ref: schema_cb389b076c24
+              fn:
+                op: Callable
+                pickled_fn: gAWVhgkAAAAAAACMD3Rvb2x6LmZ1bmN0b29sepSMDl9yZXN0b3JlX2N1cnJ5lJOUKGgAjAVjdXJyeZSTlIwyeG9ycS5leHByLm1sLmZpdF9saWI6RGVmZXJyZWRGaXRPdGhlci5faW5uZXJfb3RoZXKUKX2UKIwFb3RoZXKUaAIoaASMLXhvcnEuZXhwci5tbC5maXRfbGliOnRyYW5zZm9ybV9za2xlYXJuX3N0cnVjdJRoAihoBIwXY2xvdWRwaWNrbGUuY2xvdWRwaWNrbGWUjA5fbWFrZV9mdW5jdGlvbpSTlChoCYwNX2J1aWx0aW5fdHlwZZSTlIwIQ29kZVR5cGWUhZRSlChLA0sASwBLBUsFSwNDmJUAUwFTAEsAbgNVACIAVQE1AQAAAAAAAG4EVQNSAwAAAAAAAAAAAAAAAAAAAAAAAFghUgQAAAAAAAAAAAAAAAAAAAAAAABTAjkCUgcAAAAAAAAAAAAAAAAAAAAAAABVBFIIAAAAAAAAAAAAAAAAAAAAAAAANQEAAAAAAABSCwAAAAAAAAAAAAAAAAAAAAAAAFMDUwQ5ASQAlChOSwCMB2NvbHVtbnOUhZSMB3JlY29yZHOUjAZvcmllbnSUhZR0lCiMBnBhbmRhc5SMCURhdGFGcmFtZZSMBmZpZWxkc5SMBmFzdHlwZZSMBWR0eXBllIwHdG9fZGljdJR0lCiMA2Nsc5SMBnN0cnVjdJSMBWFycmF5lIwCcGSUjARzZWxmlHSUjDEvVXNlcnMvcGFkZHkveG9ycS9weXRob24veG9ycS9leHByL21sL3N0cnVjdGVyLnB5lIwNY29udmVydF9hcnJheZSMFlN0cnVjdGVyLmNvbnZlcnRfYXJyYXmUTYMBQ0GAAPMGAAkc4Q8SkDaLe4gE4AwOj0yJTJgVrw2pDYhM0Aw23w0TiVaQRJdKkUrTDR/fDRSJV5hJiFfQDSbwBwQJCpRDAJQpKXSUUpR9lCiMC19fcGFja2FnZV9flIwMeG9ycS5leHByLm1slIwIX19uYW1lX1+UjBV4b3JxLmV4cHIubWwuc3RydWN0ZXKUjAhfX2ZpbGVfX5SMMS9Vc2Vycy9wYWRkeS94b3JxL3B5dGhvbi94b3JxL2V4cHIvbWwvc3RydWN0ZXIucHmUdU5OTnSUUpRoCYwSX2Z1bmN0aW9uX3NldHN0YXRllJOUaDR9lH2UKGgvjA1jb252ZXJ0X2FycmF5lIwMX19xdWFsbmFtZV9flIwWU3RydWN0ZXIuY29udmVydF9hcnJheZSMD19fYW5ub3RhdGlvbnNfX5R9lIwOX19rd2RlZmF1bHRzX1+UTowMX19kZWZhdWx0c19flE6MCl9fbW9kdWxlX1+UaDCMB19fZG9jX1+UTowLX19jbG9zdXJlX1+UTowXX2Nsb3VkcGlja2xlX3N1Ym1vZHVsZXOUXZSMC19fZ2xvYmFsc19flH2UdYaUhlIwaDCMCFN0cnVjdGVylJOUaA2MCk1ldGhvZFR5cGWUhZRSlGgLKGgQKEsCSwBLAEsCSwVKAwAAAUNaPgGVAFUAUgAAAAAAAAAAAAAAAAAAAAAAAABSAwAAAAAAAAAAAAAAAAAAAAAAAFgBNQIAAAAAAABuAVsEAAAAAAAAAABUAlUAXQwAACIAUwEwAFUBRAE2ASQAlE4phpQojA1fX3NpZ25hdHVyZV9flIwPdmFsaWRhdGVfbm9iaW5klIwFc3VwZXKUjApfX2NyZWF0ZV9flHSUaB+MBmt3YXJnc5SGlIw7L1VzZXJzL3BhZGR5L3hvcnEvcHl0aG9uL3hvcnEvdmVuZG9yL2liaXMvY29tbW9uL2dyb3VuZHMucHmUjAxfX3JlY3JlYXRlX1+UjBZBbm5vdGFibGUuX19yZWNyZWF0ZV9flEt6Qy74gADwBgASFdcRItERItcRMtERMrAz0xE/iAbcDxSJd9IPIdEPK6BG0Q8r0AgrlGgpjAlfX2NsYXNzX1+UhZQpdJRSlH2UKGgtjBd4b3JxLnZlbmRvci5pYmlzLmNvbW1vbpRoL4wfeG9ycS52ZW5kb3IuaWJpcy5jb21tb24uZ3JvdW5kc5RoMYw7L1VzZXJzL3BhZGR5L3hvcnEvcHl0aG9uL3hvcnEvdmVuZG9yL2liaXMvY29tbW9uL2dyb3VuZHMucHmUdU5OaAmMEF9tYWtlX2VtcHR5X2NlbGyUk5QpUpSFlHSUUpRoNmhnfZR9lChoL4wMX19yZWNyZWF0ZV9flGg6jBZBbm5vdGFibGUuX19yZWNyZWF0ZV9flGg8fZQoaFSMA0FueZSMBnJldHVybpSMBFNlbGaUdWg+Tmg/TmhAaGBoQU5oQmgJjApfbWFrZV9jZWxslJOUaGCMCUFubm90YWJsZZSTlIWUUpSFlGhDXZRoRX2UdYaUhlIwjCR4b3JxLnZlbmRvci5pYmlzLmV4cHIuZGF0YXR5cGVzLmNvcmWUjAZTdHJ1Y3SUk5SGlFKUfZQoaBqMI3hvcnEudmVuZG9yLmliaXMuY29tbW9uLmNvbGxlY3Rpb25zlIwRRnJvemVuT3JkZXJlZERpY3SUk5R9lCiMCWZlYXR1cmVfMJRoTGhnaHqMB0Zsb2F0NjSUk5SGlFKUfZSMCG51bGxhYmxllIhzhZRSlIwJZmVhdHVyZV8xlGiMjAlmZWF0dXJlXzKUaIyMCWZlYXR1cmVfM5RojIwJZmVhdHVyZV80lGiMjAlmZWF0dXJlXzWUaIyMCWZlYXR1cmVfNpRojIwJZmVhdHVyZV83lGiMjAlmZWF0dXJlXziUaIyMCWZlYXR1cmVfOZRojHWFlFKUaIqIdYWUUpSGlH2UKGhBToaUaC+MDWNvbnZlcnRfYXJyYXmUhpRoQGgwhpRoOmgnhpSMEV9oYXNfdW5rbm93bl9hcmdzlE6GlHSUTnSUUpSFlH2UKGhBToaUaC+MGHRyYW5zZm9ybV9za2xlYXJuX3N0cnVjdJSGlGhAjBR4b3JxLmV4cHIubWwuZml0X2xpYpSGlGg6aKmGlGihToaUdJSJdJRSlIwIZmVhdHVyZXOUKGiEaI1ojmiPaJBokWiSaJNolGiVdJSMC3JldHVybl90eXBllGiZjAxlbmNvZGVkX2NvbHOUKXUoaEFOhpRoL4wMX2lubmVyX290aGVylIaUaEBoq4aUaDqMHURlZmVycmVkRml0T3RoZXIuX2lubmVyX290aGVylIaUaKFOhpR0lIl0lFKULg==
+            __udf_namespace__:
+              op: Namespace
+              dict:
+                catalog: null
+                database: null
+            __module__:
+              op: str
+              value: xorq.expr.ml.fit_lib
+            __func_name__:
+              op: str
+              value: _transformed
+      snapshot_hash: 9ec01b2a3a3969f6f2117b2ee0af4e15
+    '@project_ffdf9ae7ee01':
+      op: Project
+      parent:
+        node_ref: '@project_9ec01b2a3a39'
+      values:
+        target:
+          op: Field
+          name: target
+          relation:
+            node_ref: '@project_9ec01b2a3a39'
+          type:
+            dtype_ref: dtype_2477faedcb32
+        feature_0:
+          op: StructField
+          args:
+          - op: Field
+            name: transformed
+            relation:
+              node_ref: '@project_9ec01b2a3a39'
+            type:
+              dtype_ref: dtype_beeebde84260
+          - op: str
+            value: feature_0
+        feature_1:
+          op: StructField
+          args:
+          - op: Field
+            name: transformed
+            relation:
+              node_ref: '@project_9ec01b2a3a39'
+            type:
+              dtype_ref: dtype_beeebde84260
+          - op: str
+            value: feature_1
+        feature_2:
+          op: StructField
+          args:
+          - op: Field
+            name: transformed
+            relation:
+              node_ref: '@project_9ec01b2a3a39'
+            type:
+              dtype_ref: dtype_beeebde84260
+          - op: str
+            value: feature_2
+        feature_3:
+          op: StructField
+          args:
+          - op: Field
+            name: transformed
+            relation:
+              node_ref: '@project_9ec01b2a3a39'
+            type:
+              dtype_ref: dtype_beeebde84260
+          - op: str
+            value: feature_3
+        feature_4:
+          op: StructField
+          args:
+          - op: Field
+            name: transformed
+            relation:
+              node_ref: '@project_9ec01b2a3a39'
+            type:
+              dtype_ref: dtype_beeebde84260
+          - op: str
+            value: feature_4
+        feature_5:
+          op: StructField
+          args:
+          - op: Field
+            name: transformed
+            relation:
+              node_ref: '@project_9ec01b2a3a39'
+            type:
+              dtype_ref: dtype_beeebde84260
+          - op: str
+            value: feature_5
+        feature_6:
+          op: StructField
+          args:
+          - op: Field
+            name: transformed
+            relation:
+              node_ref: '@project_9ec01b2a3a39'
+            type:
+              dtype_ref: dtype_beeebde84260
+          - op: str
+            value: feature_6
+        feature_7:
+          op: StructField
+          args:
+          - op: Field
+            name: transformed
+            relation:
+              node_ref: '@project_9ec01b2a3a39'
+            type:
+              dtype_ref: dtype_beeebde84260
+          - op: str
+            value: feature_7
+        feature_8:
+          op: StructField
+          args:
+          - op: Field
+            name: transformed
+            relation:
+              node_ref: '@project_9ec01b2a3a39'
+            type:
+              dtype_ref: dtype_beeebde84260
+          - op: str
+            value: feature_8
+        feature_9:
+          op: StructField
+          args:
+          - op: Field
+            name: transformed
+            relation:
+              node_ref: '@project_9ec01b2a3a39'
+            type:
+              dtype_ref: dtype_beeebde84260
+          - op: str
+            value: feature_9
+      snapshot_hash: ffdf9ae7ee0137836dda1345238b3d16
+    '@tag_b8e1a3324c9d':
+      op: Tag
+      parent:
+        node_ref: '@project_ffdf9ae7ee01'
+      metadata:
+        op: FrozenOrderedDict
+        tag:
+          op: str
+          value: FittedStep-transform
+        typ:
+          op: Callable
+          pickled_fn: gAWVMgAAAAAAAACMG3NrbGVhcm4ucHJlcHJvY2Vzc2luZy5fZGF0YZSMDlN0YW5kYXJkU2NhbGVylJOULg==
+        name:
+          op: str
+          value: scaler
+        params_tuple:
+          op: tuple
+          values:
+          - op: tuple
+            values:
+            - op: str
+              value: copy
+            - op: bool
+              value: true
+          - op: tuple
+            values:
+            - op: str
+              value: with_mean
+            - op: bool
+              value: true
+          - op: tuple
+            values:
+            - op: str
+              value: with_std
+            - op: bool
+              value: true
+        features:
+          op: tuple
+          values:
+          - op: str
+            value: feature_0
+          - op: str
+            value: feature_1
+          - op: str
+            value: feature_2
+          - op: str
+            value: feature_3
+          - op: str
+            value: feature_4
+          - op: str
+            value: feature_5
+          - op: str
+            value: feature_6
+          - op: str
+            value: feature_7
+          - op: str
+            value: feature_8
+          - op: str
+            value: feature_9
+      schema_ref: schema_7ce90dbcaac1
+      snapshot_hash: b8e1a3324c9dd6f0fd65a605dbe85353
+    '@remotetable_c7436d242b87':
+      op: RemoteTable
+      table: fc41c4ade7d975d4cb003d7b719d8693
+      profile: 81460d8b971730c8f27ccbff374e2e79_2
+      remote_expr:
+        node_ref: '@tag_b8e1a3324c9d'
+      schema_ref: schema_7ce90dbcaac1
+      snapshot_hash: c7436d242b8772339e873d02b8e0d014
+    '@project_46de932e25f2':
+      op: Project
+      parent:
+        node_ref: '@remotetable_1763a90165a7'
+      values:
+        target:
+          op: Field
+          name: target
+          relation:
+            node_ref: '@remotetable_1763a90165a7'
+          type:
+            dtype_ref: dtype_2477faedcb32
+        predicted:
+          op: ExprScalarUDF
+          class_name: _predict_110
+          kwargs:
+            op: FrozenOrderedDict
+            feature_0:
+              op: Field
+              name: feature_0
+              relation:
+                node_ref: '@remotetable_1763a90165a7'
+              type:
+                dtype_ref: dtype_2477faedcb32
+            feature_1:
+              op: Field
+              name: feature_1
+              relation:
+                node_ref: '@remotetable_1763a90165a7'
+              type:
+                dtype_ref: dtype_2477faedcb32
+            feature_2:
+              op: Field
+              name: feature_2
+              relation:
+                node_ref: '@remotetable_1763a90165a7'
+              type:
+                dtype_ref: dtype_2477faedcb32
+            feature_3:
+              op: Field
+              name: feature_3
+              relation:
+                node_ref: '@remotetable_1763a90165a7'
+              type:
+                dtype_ref: dtype_2477faedcb32
+            feature_4:
+              op: Field
+              name: feature_4
+              relation:
+                node_ref: '@remotetable_1763a90165a7'
+              type:
+                dtype_ref: dtype_2477faedcb32
+            feature_5:
+              op: Field
+              name: feature_5
+              relation:
+                node_ref: '@remotetable_1763a90165a7'
+              type:
+                dtype_ref: dtype_2477faedcb32
+            feature_6:
+              op: Field
+              name: feature_6
+              relation:
+                node_ref: '@remotetable_1763a90165a7'
+              type:
+                dtype_ref: dtype_2477faedcb32
+            feature_7:
+              op: Field
+              name: feature_7
+              relation:
+                node_ref: '@remotetable_1763a90165a7'
+              type:
+                dtype_ref: dtype_2477faedcb32
+            feature_8:
+              op: Field
+              name: feature_8
+              relation:
+                node_ref: '@remotetable_1763a90165a7'
+              type:
+                dtype_ref: dtype_2477faedcb32
+            feature_9:
+              op: Field
+              name: feature_9
+              relation:
+                node_ref: '@remotetable_1763a90165a7'
+              type:
+                dtype_ref: dtype_2477faedcb32
+          meta:
+            op: FrozenOrderedDict
+            dtype:
+              dtype_ref: dtype_2477faedcb32
+            __input_type__:
+              op: InputType
+              name: PYARROW
+            __config__:
+              op: FrozenOrderedDict
+              computed_kwargs_expr:
+                op: AggUDF
+                class_name: dumps_of__inner_fit_1
+                kwargs:
+                  op: FrozenOrderedDict
+                  feature_0:
+                    op: Field
+                    name: feature_0
+                    relation:
+                      node_ref: '@remotetable_c7436d242b87'
+                    type:
+                      dtype_ref: dtype_2477faedcb32
+                  feature_1:
+                    op: Field
+                    name: feature_1
+                    relation:
+                      node_ref: '@remotetable_c7436d242b87'
+                    type:
+                      dtype_ref: dtype_2477faedcb32
+                  feature_2:
+                    op: Field
+                    name: feature_2
+                    relation:
+                      node_ref: '@remotetable_c7436d242b87'
+                    type:
+                      dtype_ref: dtype_2477faedcb32
+                  feature_3:
+                    op: Field
+                    name: feature_3
+                    relation:
+                      node_ref: '@remotetable_c7436d242b87'
+                    type:
+                      dtype_ref: dtype_2477faedcb32
+                  feature_4:
+                    op: Field
+                    name: feature_4
+                    relation:
+                      node_ref: '@remotetable_c7436d242b87'
+                    type:
+                      dtype_ref: dtype_2477faedcb32
+                  feature_5:
+                    op: Field
+                    name: feature_5
+                    relation:
+                      node_ref: '@remotetable_c7436d242b87'
+                    type:
+                      dtype_ref: dtype_2477faedcb32
+                  feature_6:
+                    op: Field
+                    name: feature_6
+                    relation:
+                      node_ref: '@remotetable_c7436d242b87'
+                    type:
+                      dtype_ref: dtype_2477faedcb32
+                  feature_7:
+                    op: Field
+                    name: feature_7
+                    relation:
+                      node_ref: '@remotetable_c7436d242b87'
+                    type:
+                      dtype_ref: dtype_2477faedcb32
+                  feature_8:
+                    op: Field
+                    name: feature_8
+                    relation:
+                      node_ref: '@remotetable_c7436d242b87'
+                    type:
+                      dtype_ref: dtype_2477faedcb32
+                  feature_9:
+                    op: Field
+                    name: feature_9
+                    relation:
+                      node_ref: '@remotetable_c7436d242b87'
+                    type:
+                      dtype_ref: dtype_2477faedcb32
+                  target:
+                    op: Field
+                    name: target
+                    relation:
+                      node_ref: '@remotetable_c7436d242b87'
+                    type:
+                      dtype_ref: dtype_2477faedcb32
+                meta:
+                  op: FrozenOrderedDict
+                  dtype:
+                    dtype_ref: dtype_6a14bef2f11e
+                  __config__:
+                    op: FrozenOrderedDict
+                    fn:
+                      op: Callable
+                      pickled_fn: gAWV0gIAAAAAAACMD3Rvb2x6LmZ1bmN0b29sepSMB0NvbXBvc2WUk5QpgZRoAIwOX3Jlc3RvcmVfY3VycnmUk5QoaACMBWN1cnJ5lJOUjDB4b3JxLmV4cHIubWwuZml0X2xpYjpEZWZlcnJlZEZpdE90aGVyLl9pbm5lcl9maXSUKX2UKIwDZml0lGgFKGgHjCB4b3JxLmV4cHIubWwuZml0X2xpYjpmaXRfc2tsZWFybpQpfZQojANjbHOUjBpza2xlYXJuLmxpbmVhcl9tb2RlbC5fYmFzZZSMEExpbmVhclJlZ3Jlc3Npb26Uk5SMBnBhcmFtc5QojAZjb3B5X1iUiIaUjA1maXRfaW50ZXJjZXB0lIiGlIwGbl9qb2JzlE6GlIwIcG9zaXRpdmWUiYaUjAN0b2yURz6wxvegte2NhpR0lHUojAdfX2RvY19flE6GlIwIX19uYW1lX1+UjAtmaXRfc2tsZWFybpSGlIwKX19tb2R1bGVfX5SMFHhvcnEuZXhwci5tbC5maXRfbGlilIaUjAxfX3F1YWxuYW1lX1+UaCCGlIwRX2hhc191bmtub3duX2FyZ3OUToaUdJSJdJRSlIwGdGFyZ2V0lGgsjAhmZWF0dXJlc5QojAlmZWF0dXJlXzCUjAlmZWF0dXJlXzGUjAlmZWF0dXJlXzKUjAlmZWF0dXJlXzOUjAlmZWF0dXJlXzSUjAlmZWF0dXJlXzWUjAlmZWF0dXJlXzaUjAlmZWF0dXJlXzeUjAlmZWF0dXJlXziUjAlmZWF0dXJlXzmUdJSMDGVuY29kZWRfY29sc5QpdShoHU6GlGgfjApfaW5uZXJfZml0lIaUaCJoI4aUaCWMG0RlZmVycmVkRml0T3RoZXIuX2lubmVyX2ZpdJSGlGgnToaUdJSJdJRSlIwXY2xvdWRwaWNrbGUuY2xvdWRwaWNrbGWUjAVkdW1wc5STlIWUhpRiLg==
+                  __input_type__:
+                    op: InputType
+                    name: PYARROW
+                  __udf_namespace__:
+                    op: Namespace
+                    dict:
+                      catalog: null
+                      database: null
+                  __module__:
+                    op: str
+                    value: toolz.functoolz
+                  __func_name__:
+                    op: str
+                    value: _fit_predict
+              post_process_fn:
+                op: Callable
+                pickled_fn: gAWVFQAAAAAAAACMB19waWNrbGWUjAVsb2Fkc5STlC4=
+              schema:
+                schema_ref: schema_cb389b076c24
+              fn:
+                op: Callable
+                pickled_fn: gAWV+QUAAAAAAACMD3Rvb2x6LmZ1bmN0b29sepSMDl9yZXN0b3JlX2N1cnJ5lJOUKGgAjAVjdXJyeZSTlIwyeG9ycS5leHByLm1sLmZpdF9saWI6RGVmZXJyZWRGaXRPdGhlci5faW5uZXJfb3RoZXKUKX2UKIwFb3RoZXKUaAIoaASMJHhvcnEuZXhwci5tbC5maXRfbGliOnByZWRpY3Rfc2tsZWFybpQpfZQojAdfX2RvY19flE6GlIwIX19uYW1lX1+UjA9wcmVkaWN0X3NrbGVhcm6UhpSMCl9fbW9kdWxlX1+UjBR4b3JxLmV4cHIubWwuZml0X2xpYpSGlIwMX19xdWFsbmFtZV9flGgNhpSMEV9oYXNfdW5rbm93bl9hcmdzlE6GlHSUiHSUUpSMCGZlYXR1cmVzlCiMCWZlYXR1cmVfMJSMCWZlYXR1cmVfMZSMCWZlYXR1cmVfMpSMCWZlYXR1cmVfM5SMCWZlYXR1cmVfNJSMCWZlYXR1cmVfNZSMCWZlYXR1cmVfNpSMCWZlYXR1cmVfN5SMCWZlYXR1cmVfOJSMCWZlYXR1cmVfOZR0lIwLcmV0dXJuX3R5cGWUjBdjbG91ZHBpY2tsZS5jbG91ZHBpY2tsZZSMDV9idWlsdGluX3R5cGWUk5SMCk1ldGhvZFR5cGWUhZRSlGgmjA5fbWFrZV9mdW5jdGlvbpSTlChoKIwIQ29kZVR5cGWUhZRSlChLAksASwBLAksFSgMAAAFDWj4BlQBVAFIAAAAAAAAAAAAAAAAAAAAAAAAAUgMAAAAAAAAAAAAAAAAAAAAAAABYATUCAAAAAAAAbgFbBAAAAAAAAAAAVAJVAF0MAAAiAFMBMABVAUQBNgEkAJROKYaUKIwNX19zaWduYXR1cmVfX5SMD3ZhbGlkYXRlX25vYmluZJSMBXN1cGVylIwKX19jcmVhdGVfX5R0lIwDY2xzlIwGa3dhcmdzlIaUjDsvVXNlcnMvcGFkZHkveG9ycS9weXRob24veG9ycS92ZW5kb3IvaWJpcy9jb21tb24vZ3JvdW5kcy5weZSMDF9fcmVjcmVhdGVfX5SMFkFubm90YWJsZS5fX3JlY3JlYXRlX1+US3pDLviAAPAGABIV1xEi0REi1xEy0REysDPTET+IBtwPFIl30g8h0Q8roEbRDyvQCCuUQwCUjAlfX2NsYXNzX1+UhZQpdJRSlH2UKIwLX19wYWNrYWdlX1+UjBd4b3JxLnZlbmRvci5pYmlzLmNvbW1vbpRoDIwfeG9ycS52ZW5kb3IuaWJpcy5jb21tb24uZ3JvdW5kc5SMCF9fZmlsZV9flIw7L1VzZXJzL3BhZGR5L3hvcnEvcHl0aG9uL3hvcnEvdmVuZG9yL2liaXMvY29tbW9uL2dyb3VuZHMucHmUdU5OaCaMEF9tYWtlX2VtcHR5X2NlbGyUk5QpUpSFlHSUUpRoJowSX2Z1bmN0aW9uX3NldHN0YXRllJOUaE99lH2UKGgMjAxfX3JlY3JlYXRlX1+UaBKMFkFubm90YWJsZS5fX3JlY3JlYXRlX1+UjA9fX2Fubm90YXRpb25zX1+UfZQoaDmMA0FueZSMBnJldHVybpSMBFNlbGaUdYwOX19rd2RlZmF1bHRzX1+UTowMX19kZWZhdWx0c19flE5oD2hHaApOjAtfX2Nsb3N1cmVfX5RoJowKX21ha2VfY2VsbJSTlGhHjAlBbm5vdGFibGWUk5SFlFKUhZSMF19jbG91ZHBpY2tsZV9zdWJtb2R1bGVzlF2UjAtfX2dsb2JhbHNfX5R9lHWGlIZSMIwkeG9ycS52ZW5kb3IuaWJpcy5leHByLmRhdGF0eXBlcy5jb3JllIwHRmxvYXQ2NJSTlIaUUpR9lIwIbnVsbGFibGWUiHOFlFKUjAxlbmNvZGVkX2NvbHOUKXUoaApOhpRoDIwMX2lubmVyX290aGVylIaUaA9oEIaUaBKMHURlZmVycmVkRml0T3RoZXIuX2lubmVyX290aGVylIaUaBROhpR0lIl0lFKULg==
+            __udf_namespace__:
+              op: Namespace
+              dict:
+                catalog: null
+                database: null
+            __module__:
+              op: str
+              value: xorq.expr.ml.fit_lib
+            __func_name__:
+              op: str
+              value: _predict_110
+      snapshot_hash: 46de932e25f2b2a619bb7acc0b6554ac
+    '@tag_d1f45f75681f':
+      op: Tag
+      parent:
+        node_ref: '@project_46de932e25f2'
+      metadata:
+        op: FrozenOrderedDict
+        tag:
+          op: str
+          value: FittedStep-predict
+        typ:
+          op: Callable
+          pickled_fn: gAWVMwAAAAAAAACMGnNrbGVhcm4ubGluZWFyX21vZGVsLl9iYXNllIwQTGluZWFyUmVncmVzc2lvbpSTlC4=
+        name:
+          op: str
+          value: regressor
+        params_tuple:
+          op: tuple
+          values:
+          - op: tuple
+            values:
+            - op: str
+              value: copy_X
+            - op: bool
+              value: true
+          - op: tuple
+            values:
+            - op: str
+              value: fit_intercept
+            - op: bool
+              value: true
+          - op: tuple
+            values:
+            - op: str
+              value: n_jobs
+            - null
+          - op: tuple
+            values:
+            - op: str
+              value: positive
+            - op: bool
+              value: false
+          - op: tuple
+            values:
+            - op: str
+              value: tol
+            - op: float
+              value: 1e-06
+        features:
+          op: tuple
+          values:
+          - op: str
+            value: feature_0
+          - op: str
+            value: feature_1
+          - op: str
+            value: feature_2
+          - op: str
+            value: feature_3
+          - op: str
+            value: feature_4
+          - op: str
+            value: feature_5
+          - op: str
+            value: feature_6
+          - op: str
+            value: feature_7
+          - op: str
+            value: feature_8
+          - op: str
+            value: feature_9
+      schema_ref: schema_5a79bd66d40c
+      snapshot_hash: d1f45f75681fec4d74e3ad4efb6b7700
+    '@remotetable_0df475ee9a65':
+      op: RemoteTable
+      table: ce55dcd130b1f987ba6eb6a45c3e198f
+      profile: 81460d8b971730c8f27ccbff374e2e79_4
+      remote_expr:
+        node_ref: '@tag_d1f45f75681f'
+      schema_ref: schema_5a79bd66d40c
+      snapshot_hash: 0df475ee9a65fba513940071fcbb77eb
+    '@tag_7dd84421e4af':
+      op: Tag
+      parent:
+        node_ref: '@remotetable_0df475ee9a65'
+      metadata:
+        op: FrozenOrderedDict
+        tag:
+          op: str
+          value: FittedPipeline-predict
+        predict_tags:
+          op: tuple
+          values:
+          - op: tuple
+            values:
+            - op: str
+              value: tag
+            - op: str
+              value: FittedStep-predict
+          - op: tuple
+            values:
+            - op: str
+              value: typ
+            - op: Callable
+              pickled_fn: gAWVMwAAAAAAAACMGnNrbGVhcm4ubGluZWFyX21vZGVsLl9iYXNllIwQTGluZWFyUmVncmVzc2lvbpSTlC4=
+          - op: tuple
+            values:
+            - op: str
+              value: name
+            - op: str
+              value: regressor
+          - op: tuple
+            values:
+            - op: str
+              value: params_tuple
+            - op: tuple
+              values:
+              - op: tuple
+                values:
+                - op: str
+                  value: copy_X
+                - op: bool
+                  value: true
+              - op: tuple
+                values:
+                - op: str
+                  value: fit_intercept
+                - op: bool
+                  value: true
+              - op: tuple
+                values:
+                - op: str
+                  value: n_jobs
+                - null
+              - op: tuple
+                values:
+                - op: str
+                  value: positive
+                - op: bool
+                  value: false
+              - op: tuple
+                values:
+                - op: str
+                  value: tol
+                - op: float
+                  value: 1e-06
+          - op: tuple
+            values:
+            - op: str
+              value: features
+            - op: tuple
+              values:
+              - op: str
+                value: feature_0
+              - op: str
+                value: feature_1
+              - op: str
+                value: feature_2
+              - op: str
+                value: feature_3
+              - op: str
+                value: feature_4
+              - op: str
+                value: feature_5
+              - op: str
+                value: feature_6
+              - op: str
+                value: feature_7
+              - op: str
+                value: feature_8
+              - op: str
+                value: feature_9
+      schema_ref: schema_5a79bd66d40c
+      snapshot_hash: 7dd84421e4afc31a8cefad1266245619
+  schemas:
+    schema_7ce90dbcaac1:
+      feature_0:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      feature_1:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      feature_2:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      feature_3:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      feature_4:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      feature_5:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      feature_6:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      feature_7:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      feature_8:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      feature_9:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      target:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+    schema_cb389b076c24:
+      feature_0:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      feature_1:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      feature_2:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      feature_3:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      feature_4:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      feature_5:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      feature_6:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      feature_7:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      feature_8:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      feature_9:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+    schema_5a79bd66d40c:
+      target:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      predicted:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+expression:
+  node_ref: '@tag_7dd84421e4af'
+  schema_ref:
+    schema_ref: schema_5a79bd66d40c

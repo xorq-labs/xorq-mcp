@@ -1,0 +1,16 @@
+{
+  "current_library_version": "0.3.7",
+  "metadata_version": "0.0.0",
+  "git_state": {
+    "commit": "c30283aa67da816cac7f2c753dd0c1efade71552",
+    "diff": "",
+    "diff_cached": ""
+  },
+  "sys-version_info": [
+    3,
+    13,
+    11,
+    "final",
+    0
+  ]
+}

@@ -1,0 +1,1 @@
+{"by": "rainforest", "id": 43182782, "kids": [43189301], "parent": 43174273, "text": "Could you go into a bit more detail about this? Why is exposing devtools to the agent a problem? What&#x27;s the attack vector? That the agent might do something malicious to exfil saved passwords?", "time": 1740570097, "type": "comment"}

@@ -1,0 +1,139 @@
+definitions:
+  dtypes:
+    dtype_2477faedcb32:
+      op: DataType
+      type: Float64
+      nullable:
+        op: bool
+        value: true
+    dtype_d7a3617bc05d:
+      op: DataType
+      type: Int8
+      nullable:
+        op: bool
+        value: true
+    dtype_412c64af1deb:
+      op: DataType
+      type: Boolean
+      nullable:
+        op: bool
+        value: true
+    dtype_b10497e9b395:
+      op: DataType
+      type: String
+      nullable:
+        op: bool
+        value: true
+  nodes:
+    '@read_8c4553858b20':
+      op: Read
+      method_name: read_csv
+      name: iris
+      profile: 81460d8b971730c8f27ccbff374e2e79_1
+      read_kwargs:
+      - - path
+        - /Users/paddy/Library/Caches/pins-py/gs_d3037fb8920d01eb3b262ab08d52335c89ba62aa41299e5236f01807aa8b726d/iris/20240716T095120Z-d77c9/iris.csv
+      - - table_name
+        - iris
+      - - schema
+        - sepal_length: float64
+          sepal_width: float64
+          petal_length: float64
+          petal_width: float64
+          species: string
+      normalize_method: gAWVPgAAAAAAAACMHXhvcnEuY29tbW9uLnV0aWxzLmRlZmVyX3V0aWxzlIwYbm9ybWFsaXplX3JlYWRfcGF0aF9zdGF0lJOULg==
+      schema_ref: schema_ef9973fbd378
+      snapshot_hash: 8c4553858b209b0fe7c87970ad2e1631
+    '@filter_a6ae5a407aa0':
+      op: Filter
+      parent:
+        node_ref: '@read_8c4553858b20'
+      predicates:
+      - op: Greater
+        left:
+          op: Field
+          name: sepal_length
+          relation:
+            node_ref: '@read_8c4553858b20'
+          type:
+            dtype_ref: dtype_2477faedcb32
+        right:
+          op: Literal
+          value: 5
+          type:
+            dtype_ref: dtype_d7a3617bc05d
+        type:
+          dtype_ref: dtype_412c64af1deb
+      snapshot_hash: a6ae5a407aa0864e7cda15d2a57bae85
+  schemas:
+    schema_ef9973fbd378:
+      sepal_length:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      sepal_width:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      petal_length:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      petal_width:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      species:
+        op: DataType
+        type: String
+        nullable:
+          op: bool
+          value: true
+    schema_31fea381832d:
+      species:
+        op: DataType
+        type: String
+        nullable:
+          op: bool
+          value: true
+      Sum(sepal_width):
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+expression:
+  op: Aggregate
+  parent:
+    node_ref: '@filter_a6ae5a407aa0'
+  by:
+    species:
+      op: Field
+      name: species
+      relation:
+        node_ref: '@filter_a6ae5a407aa0'
+      type:
+        dtype_ref: dtype_b10497e9b395
+  metrics:
+    Sum(sepal_width):
+      op: Sum
+      arg:
+        op: Field
+        name: sepal_width
+        relation:
+          node_ref: '@filter_a6ae5a407aa0'
+        type:
+          dtype_ref: dtype_2477faedcb32
+      where: null
+      type:
+        dtype_ref: dtype_2477faedcb32
+  schema_ref:
+    schema_ref: schema_31fea381832d

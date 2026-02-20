@@ -1,0 +1,258 @@
+definitions:
+  dtypes:
+    dtype_1c0ba5184c57:
+      op: DataType
+      type: Int16
+      nullable:
+        op: bool
+        value: true
+    dtype_35d7eca6c318:
+      op: DataType
+      type: Int32
+      nullable:
+        op: bool
+        value: true
+    dtype_b8ac6dad1dc6:
+      op: DataType
+      type: Float32
+      nullable:
+        op: bool
+        value: true
+    dtype_d7a3617bc05d:
+      op: DataType
+      type: Int8
+      nullable:
+        op: bool
+        value: true
+    dtype_412c64af1deb:
+      op: DataType
+      type: Boolean
+      nullable:
+        op: bool
+        value: true
+  nodes:
+    '@databasetable_56a792090cc7':
+      op: DatabaseTable
+      table: functional_alltypes
+      profile: 7d9013c20ffb9ed00d0834fb20e2b72e_3
+      namespace:
+        catalog: null
+        database: null
+      schema_ref: schema_dd00bc90fd0f
+      snapshot_hash: 56a792090cc7f7a2b577081ac9605d0b
+    '@remotetable_598b40fc2eef':
+      op: RemoteTable
+      table: 4f0db13bf05547b2e0fff8aa3d014e8e
+      profile: 81460d8b971730c8f27ccbff374e2e79_4
+      remote_expr:
+        node_ref: '@databasetable_56a792090cc7'
+      schema_ref: schema_dd00bc90fd0f
+      snapshot_hash: 598b40fc2eeff7239bdedcb109bd9054
+    '@project_2e7ec7d39c8a':
+      op: Project
+      parent:
+        node_ref: '@remotetable_598b40fc2eef'
+      values:
+        smallint_col:
+          op: Field
+          name: smallint_col
+          relation:
+            node_ref: '@remotetable_598b40fc2eef'
+          type:
+            dtype_ref: dtype_1c0ba5184c57
+        int_col:
+          op: Field
+          name: int_col
+          relation:
+            node_ref: '@remotetable_598b40fc2eef'
+          type:
+            dtype_ref: dtype_35d7eca6c318
+        float_col:
+          op: Field
+          name: float_col
+          relation:
+            node_ref: '@remotetable_598b40fc2eef'
+          type:
+            dtype_ref: dtype_b8ac6dad1dc6
+      snapshot_hash: 2e7ec7d39c8acdef2d828731332b8f1c
+    '@cachednode_6a9befe53114':
+      op: CachedNode
+      name: xorq_cached_node_name_placeholder
+      parent:
+        node_ref: '@project_2e7ec7d39c8a'
+      source: 81460d8b971730c8f27ccbff374e2e79_4
+      cache:
+        type: ParquetCache
+        source: 81460d8b971730c8f27ccbff374e2e79_4
+        relative_path: parquet-cache
+      schema_ref: schema_e3f388903441
+      snapshot_hash: 6a9befe531140dd8c7b94afd3b5b8552
+    '@filter_29335ec23cab':
+      op: Filter
+      parent:
+        node_ref: '@cachednode_6a9befe53114'
+      predicates:
+      - op: Greater
+        left:
+          op: Field
+          name: float_col
+          relation:
+            node_ref: '@cachednode_6a9befe53114'
+          type:
+            dtype_ref: dtype_b8ac6dad1dc6
+        right:
+          op: Literal
+          value: 0
+          type:
+            dtype_ref: dtype_d7a3617bc05d
+        type:
+          dtype_ref: dtype_412c64af1deb
+      - op: Greater
+        left:
+          op: Field
+          name: smallint_col
+          relation:
+            node_ref: '@cachednode_6a9befe53114'
+          type:
+            dtype_ref: dtype_1c0ba5184c57
+        right:
+          op: Literal
+          value: 4
+          type:
+            dtype_ref: dtype_d7a3617bc05d
+        type:
+          dtype_ref: dtype_412c64af1deb
+      - op: Less
+        left:
+          op: Field
+          name: int_col
+          relation:
+            node_ref: '@cachednode_6a9befe53114'
+          type:
+            dtype_ref: dtype_35d7eca6c318
+        right:
+          op: Multiply
+          left:
+            op: Field
+            name: float_col
+            relation:
+              node_ref: '@cachednode_6a9befe53114'
+            type:
+              dtype_ref: dtype_b8ac6dad1dc6
+          right:
+            op: Literal
+            value: 2
+            type:
+              dtype_ref: dtype_d7a3617bc05d
+          type:
+            dtype_ref: dtype_b8ac6dad1dc6
+        type:
+          dtype_ref: dtype_412c64af1deb
+      snapshot_hash: 29335ec23cab99d3134540445630e9d5
+  schemas:
+    schema_dd00bc90fd0f:
+      id:
+        op: DataType
+        type: Int64
+        nullable:
+          op: bool
+          value: true
+      bool_col:
+        op: DataType
+        type: Boolean
+        nullable:
+          op: bool
+          value: true
+      tinyint_col:
+        op: DataType
+        type: Int16
+        nullable:
+          op: bool
+          value: true
+      smallint_col:
+        op: DataType
+        type: Int16
+        nullable:
+          op: bool
+          value: true
+      int_col:
+        op: DataType
+        type: Int32
+        nullable:
+          op: bool
+          value: true
+      bigint_col:
+        op: DataType
+        type: Int64
+        nullable:
+          op: bool
+          value: true
+      float_col:
+        op: DataType
+        type: Float32
+        nullable:
+          op: bool
+          value: true
+      double_col:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      date_string_col:
+        op: DataType
+        type: String
+        nullable:
+          op: bool
+          value: true
+      string_col:
+        op: DataType
+        type: String
+        nullable:
+          op: bool
+          value: true
+      timestamp_col:
+        op: DataType
+        type: Timestamp
+        timezone: null
+        scale:
+          op: int
+          value: 6
+        nullable:
+          op: bool
+          value: true
+      year:
+        op: DataType
+        type: Int64
+        nullable:
+          op: bool
+          value: true
+      month:
+        op: DataType
+        type: Int64
+        nullable:
+          op: bool
+          value: true
+    schema_e3f388903441:
+      smallint_col:
+        op: DataType
+        type: Int16
+        nullable:
+          op: bool
+          value: true
+      int_col:
+        op: DataType
+        type: Int32
+        nullable:
+          op: bool
+          value: true
+      float_col:
+        op: DataType
+        type: Float32
+        nullable:
+          op: bool
+          value: true
+expression:
+  node_ref: '@filter_29335ec23cab'
+  schema_ref:
+    schema_ref: schema_e3f388903441

@@ -1,0 +1,1 @@
+{"by": "samsk", "id": 43182356, "parent": 43182179, "text": "Only problematic thing might be relatively frequent storage changes (like they like to deprecate primary storage driver), otherwise its IMHO easy to setup. I&#x27;m running it on several projects, because it doesn&#x27;t needs beefy machine like Elastic or even ClickHouse.", "time": 1740564243, "type": "comment"}

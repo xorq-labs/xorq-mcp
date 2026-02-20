@@ -1,0 +1,1 @@
+{"by": "whstl", "id": 43182085, "parent": 43179017, "text": "WAFs help with this, but at the HTTP level. By putting \u201cinformation_schema\u201d, \u201csys.tables\u201d in the filters.<p>Not the real solution, IMO, but WAFs are useful for more than SQLi, and is the kind of tech you can ask money for.", "time": 1740560917, "type": "comment"}

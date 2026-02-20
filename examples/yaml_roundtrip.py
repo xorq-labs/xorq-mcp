@@ -1,0 +1,31 @@
+import xorq.api as xo
+from xorq.common.utils.defer_utils import deferred_read_parquet
+from xorq.expr.relations import into_backend
+from xorq.ibis_yaml.compiler import (
+    build_expr,
+    load_expr,
+)
+
+
+pg = xo.postgres.connect_examples()
+db = xo.duckdb.connect()
+
+batting = pg.table("batting")
+
+backend = xo.duckdb.connect()
+awards_players = deferred_read_parquet(
+    xo.config.options.pins.get_path("awards_players"),
+    backend,
+    table_name="award_players",
+)
+left = batting.filter(batting.yearID == 2015)
+right = awards_players.filter(awards_players.lgID == "NL").drop("yearID", "lgID")
+expr = left.join(
+    into_backend(right, pg, "pg-filtered-table"), ["playerID"], how="semi"
+)[["yearID", "stint"]]
+
+
+if __name__ == "__pytest_main__":
+    build_path = build_expr(expr, builds_dir="builds")
+    roundtrip_expr = load_expr(build_path)
+    pytest_examples_passed = True

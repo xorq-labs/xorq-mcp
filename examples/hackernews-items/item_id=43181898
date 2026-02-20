@@ -1,0 +1,1 @@
+{"by": "ahoka", "id": 43181898, "parent": 43179050, "text": "And JIT is something you would disable, because often it makes queries slower or jus unpredictable (and results are not cached AFAIK).", "time": 1740558798, "type": "comment"}

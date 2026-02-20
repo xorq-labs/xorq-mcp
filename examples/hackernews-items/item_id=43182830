@@ -1,0 +1,1 @@
+{"by": "frodo8sam", "id": 43182830, "kids": [43185353], "parent": 43182699, "text": "I would guess that the FFT scales better as you increase the number of tokens in the context window. Interesting Google&#x27;s models outperform their competitors on context size.", "time": 1740570595, "type": "comment"}

@@ -10,15 +10,25 @@
 <body>
   <nav class="sidebar">
     <div class="sidebar-header">
-      <h1>xorq</h1>
+      <img src="{{ static_url('images/Xorq_WordMark_RGB_BlueSky.svg') }}" alt="xorq" class="logo">
       <div class="subtitle">Expression Catalog</div>
     </div>
+    <div class="nav-section-label">Views</div>
     <ul class="nav-list">
+      <li>
+        <a href="/" class="{{ 'active' if current_entry == '__catalog__' else '' }}">
+          Catalog
+        </a>
+      </li>
       <li>
         <a href="/runs" class="{{ 'active' if current_entry == '__runs__' else '' }}">
           All Runs
         </a>
       </li>
+    </ul>
+    {% if nav_entries %}
+    <div class="nav-section-label">Expressions</div>
+    <ul class="nav-list">
       {% for entry in nav_entries %}
       <li>
         <a href="/entry/{{ entry['display_name'] }}"
@@ -29,6 +39,7 @@
       </li>
       {% end %}
     </ul>
+    {% end %}
   </nav>
   <div class="main">
     {% block content %}{% end %}

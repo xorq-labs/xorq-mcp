@@ -1,0 +1,16 @@
+7d9013c20ffb9ed00d0834fb20e2b72e_3:
+  con_name: postgres
+  kwargs_tuple:
+    autocommit: true
+    database: letsql
+    host: examples.letsql.com
+    password: letsql
+    port: 5432
+    schema: null
+    user: letsql
+  idx: 3
+81460d8b971730c8f27ccbff374e2e79_4:
+  con_name: xorq
+  kwargs_tuple:
+    config: null
+  idx: 4

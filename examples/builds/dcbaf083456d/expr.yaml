@@ -1,0 +1,716 @@
+definitions:
+  dtypes:
+    dtype_2477faedcb32:
+      op: DataType
+      type: Float64
+      nullable:
+        op: bool
+        value: true
+    dtype_596db6c249de:
+      op: DataType
+      type: Decimal
+      precision:
+        op: int
+        value: 38
+      scale:
+        op: int
+        value: 9
+      nullable:
+        op: bool
+        value: true
+    dtype_1c0ba5184c57:
+      op: DataType
+      type: Int16
+      nullable:
+        op: bool
+        value: true
+    dtype_b10497e9b395:
+      op: DataType
+      type: String
+      nullable:
+        op: bool
+        value: true
+    dtype_99c62bfe771f:
+      op: DataType
+      type: Int64
+      nullable:
+        op: bool
+        value: true
+    dtype_412c64af1deb:
+      op: DataType
+      type: Boolean
+      nullable:
+        op: bool
+        value: true
+    dtype_d7a3617bc05d:
+      op: DataType
+      type: Int8
+      nullable:
+        op: bool
+        value: true
+  nodes:
+    '@read_bd412350aa6e':
+      op: Read
+      method_name: read_parquet
+      name: t
+      profile: 81460d8b971730c8f27ccbff374e2e79_1
+      read_kwargs:
+      - - path
+        - builds/dcbaf083456d/database_tables/8a48fc8b8d8070ce591f89f5c58b2aa6.parquet
+      - - table_name
+        - t
+      normalize_method: gAWVWAAAAAAAAACMNXhvcnEuY29tbW9uLnV0aWxzLmRhc2tfbm9ybWFsaXplLmRhc2tfbm9ybWFsaXplX3V0aWxzlIwabm9ybWFsaXplX3JlYWRfcGF0aF9tZDVzdW2Uk5Qu
+      schema_ref: schema_2ad89b788f75
+      snapshot_hash: bd412350aa6e923aef087932e5ebaee8
+    '@filter_33d40f0c8461':
+      op: Filter
+      parent:
+        node_ref: '@read_bd412350aa6e'
+      predicates:
+      - op: LessEqual
+        left:
+          op: Multiply
+          left:
+            op: Cast
+            arg:
+              op: Literal
+              value: 0.5
+              type:
+                dtype_ref: dtype_2477faedcb32
+            to:
+              dtype_ref: dtype_596db6c249de
+            type:
+              dtype_ref: dtype_596db6c249de
+          right:
+            op: Literal
+            value: 10000
+            type:
+              dtype_ref: dtype_1c0ba5184c57
+          type:
+            dtype_ref: dtype_596db6c249de
+        right:
+          op: Modulus
+          left:
+            op: Abs
+            arg:
+              op: Hash
+              arg:
+                op: Alias
+                type:
+                  dtype_ref: dtype_b10497e9b395
+                args:
+                - op: StringConcat
+                  arg:
+                    op: tuple
+                    values:
+                    - op: StringJoin
+                      arg:
+                        op: tuple
+                        values:
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: a
+                            relation:
+                              node_ref: '@read_bd412350aa6e'
+                            type:
+                              dtype_ref: dtype_99c62bfe771f
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                      sep:
+                        op: Literal
+                        value: ','
+                        type:
+                          dtype_ref: dtype_b10497e9b395
+                      type:
+                        dtype_ref: dtype_b10497e9b395
+                    - op: Literal
+                      value: '111793196543967404139194827996419963236210979610743141064269745943111491389389'
+                      type:
+                        dtype_ref: dtype_b10497e9b395
+                  type:
+                    dtype_ref: dtype_b10497e9b395
+                - op: str
+                  value: _9446d668d378c2e5d3c97a26eb30741e
+              type:
+                dtype_ref: dtype_99c62bfe771f
+            type:
+              dtype_ref: dtype_99c62bfe771f
+          right:
+            op: Literal
+            value: 10000
+            type:
+              dtype_ref: dtype_1c0ba5184c57
+          type:
+            dtype_ref: dtype_99c62bfe771f
+        type:
+          dtype_ref: dtype_412c64af1deb
+      - op: Literal
+        value: true
+        type:
+          dtype_ref: dtype_412c64af1deb
+      snapshot_hash: 33d40f0c8461380c31eb8263c828f1bf
+    '@tag_9c6c8ae4f1db':
+      op: Tag
+      parent:
+        node_ref: '@filter_33d40f0c8461'
+      metadata:
+        op: FrozenOrderedDict
+        tag:
+          op: str
+          value: train_test_split
+        split_i:
+          op: int
+          value: 2
+        split_size:
+          op: float
+          value: '0.5'
+        test_sizes:
+          op: tuple
+          values:
+          - op: float
+            value: '0.2'
+          - op: float
+            value: '0.3'
+          - op: float
+            value: '0.5'
+        num_buckets:
+          op: int
+          value: 10000
+        unique_key:
+          op: tuple
+          values:
+          - op: str
+            value: a
+      schema_ref: schema_2ad89b788f75
+      snapshot_hash: 9c6c8ae4f1db784f0be86ccd73c60802
+    '@project_f847a0bcea92':
+      op: Project
+      parent:
+        node_ref: '@tag_9c6c8ae4f1db'
+      values:
+        a:
+          op: Field
+          name: a
+          relation:
+            node_ref: '@tag_9c6c8ae4f1db'
+          type:
+            dtype_ref: dtype_99c62bfe771f
+        b:
+          op: Field
+          name: b
+          relation:
+            node_ref: '@tag_9c6c8ae4f1db'
+          type:
+            dtype_ref: dtype_99c62bfe771f
+        split:
+          op: Literal
+          value: 2
+          type:
+            dtype_ref: dtype_99c62bfe771f
+      snapshot_hash: f847a0bcea92504d98cae174cf29c274
+    '@filter_0a109dccabde':
+      op: Filter
+      parent:
+        node_ref: '@read_bd412350aa6e'
+      predicates:
+      - op: LessEqual
+        left:
+          op: Multiply
+          left:
+            op: Cast
+            arg:
+              op: Literal
+              value: 0
+              type:
+                dtype_ref: dtype_d7a3617bc05d
+            to:
+              dtype_ref: dtype_596db6c249de
+            type:
+              dtype_ref: dtype_596db6c249de
+          right:
+            op: Literal
+            value: 10000
+            type:
+              dtype_ref: dtype_1c0ba5184c57
+          type:
+            dtype_ref: dtype_596db6c249de
+        right:
+          op: Modulus
+          left:
+            op: Abs
+            arg:
+              op: Hash
+              arg:
+                op: Alias
+                type:
+                  dtype_ref: dtype_b10497e9b395
+                args:
+                - op: StringConcat
+                  arg:
+                    op: tuple
+                    values:
+                    - op: StringJoin
+                      arg:
+                        op: tuple
+                        values:
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: a
+                            relation:
+                              node_ref: '@read_bd412350aa6e'
+                            type:
+                              dtype_ref: dtype_99c62bfe771f
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                      sep:
+                        op: Literal
+                        value: ','
+                        type:
+                          dtype_ref: dtype_b10497e9b395
+                      type:
+                        dtype_ref: dtype_b10497e9b395
+                    - op: Literal
+                      value: '111793196543967404139194827996419963236210979610743141064269745943111491389389'
+                      type:
+                        dtype_ref: dtype_b10497e9b395
+                  type:
+                    dtype_ref: dtype_b10497e9b395
+                - op: str
+                  value: _9446d668d378c2e5d3c97a26eb30741e
+              type:
+                dtype_ref: dtype_99c62bfe771f
+            type:
+              dtype_ref: dtype_99c62bfe771f
+          right:
+            op: Literal
+            value: 10000
+            type:
+              dtype_ref: dtype_1c0ba5184c57
+          type:
+            dtype_ref: dtype_99c62bfe771f
+        type:
+          dtype_ref: dtype_412c64af1deb
+      - op: Less
+        left:
+          op: Modulus
+          left:
+            op: Abs
+            arg:
+              op: Hash
+              arg:
+                op: Alias
+                type:
+                  dtype_ref: dtype_b10497e9b395
+                args:
+                - op: StringConcat
+                  arg:
+                    op: tuple
+                    values:
+                    - op: StringJoin
+                      arg:
+                        op: tuple
+                        values:
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: a
+                            relation:
+                              node_ref: '@read_bd412350aa6e'
+                            type:
+                              dtype_ref: dtype_99c62bfe771f
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                      sep:
+                        op: Literal
+                        value: ','
+                        type:
+                          dtype_ref: dtype_b10497e9b395
+                      type:
+                        dtype_ref: dtype_b10497e9b395
+                    - op: Literal
+                      value: '111793196543967404139194827996419963236210979610743141064269745943111491389389'
+                      type:
+                        dtype_ref: dtype_b10497e9b395
+                  type:
+                    dtype_ref: dtype_b10497e9b395
+                - op: str
+                  value: _9446d668d378c2e5d3c97a26eb30741e
+              type:
+                dtype_ref: dtype_99c62bfe771f
+            type:
+              dtype_ref: dtype_99c62bfe771f
+          right:
+            op: Literal
+            value: 10000
+            type:
+              dtype_ref: dtype_1c0ba5184c57
+          type:
+            dtype_ref: dtype_99c62bfe771f
+        right:
+          op: Multiply
+          left:
+            op: Cast
+            arg:
+              op: Literal
+              value: 0.2
+              type:
+                dtype_ref: dtype_2477faedcb32
+            to:
+              dtype_ref: dtype_596db6c249de
+            type:
+              dtype_ref: dtype_596db6c249de
+          right:
+            op: Literal
+            value: 10000
+            type:
+              dtype_ref: dtype_1c0ba5184c57
+          type:
+            dtype_ref: dtype_596db6c249de
+        type:
+          dtype_ref: dtype_412c64af1deb
+      snapshot_hash: 0a109dccabde2fcbe383924868643b1c
+    '@tag_43616dae5eb2':
+      op: Tag
+      parent:
+        node_ref: '@filter_0a109dccabde'
+      metadata:
+        op: FrozenOrderedDict
+        tag:
+          op: str
+          value: train_test_split
+        split_i:
+          op: int
+          value: 0
+        split_size:
+          op: float
+          value: '0.2'
+        test_sizes:
+          op: tuple
+          values:
+          - op: float
+            value: '0.2'
+          - op: float
+            value: '0.3'
+          - op: float
+            value: '0.5'
+        num_buckets:
+          op: int
+          value: 10000
+        unique_key:
+          op: tuple
+          values:
+          - op: str
+            value: a
+      schema_ref: schema_2ad89b788f75
+      snapshot_hash: 43616dae5eb238a64dc92fb6ee526577
+    '@project_31f34e62c85c':
+      op: Project
+      parent:
+        node_ref: '@tag_43616dae5eb2'
+      values:
+        a:
+          op: Field
+          name: a
+          relation:
+            node_ref: '@tag_43616dae5eb2'
+          type:
+            dtype_ref: dtype_99c62bfe771f
+        b:
+          op: Field
+          name: b
+          relation:
+            node_ref: '@tag_43616dae5eb2'
+          type:
+            dtype_ref: dtype_99c62bfe771f
+        split:
+          op: Literal
+          value: 0
+          type:
+            dtype_ref: dtype_99c62bfe771f
+      snapshot_hash: 31f34e62c85c4c7bce70b316b91f4920
+    '@filter_bbbaeda54a97':
+      op: Filter
+      parent:
+        node_ref: '@read_bd412350aa6e'
+      predicates:
+      - op: LessEqual
+        left:
+          op: Multiply
+          left:
+            op: Cast
+            arg:
+              op: Literal
+              value: 0.2
+              type:
+                dtype_ref: dtype_2477faedcb32
+            to:
+              dtype_ref: dtype_596db6c249de
+            type:
+              dtype_ref: dtype_596db6c249de
+          right:
+            op: Literal
+            value: 10000
+            type:
+              dtype_ref: dtype_1c0ba5184c57
+          type:
+            dtype_ref: dtype_596db6c249de
+        right:
+          op: Modulus
+          left:
+            op: Abs
+            arg:
+              op: Hash
+              arg:
+                op: Alias
+                type:
+                  dtype_ref: dtype_b10497e9b395
+                args:
+                - op: StringConcat
+                  arg:
+                    op: tuple
+                    values:
+                    - op: StringJoin
+                      arg:
+                        op: tuple
+                        values:
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: a
+                            relation:
+                              node_ref: '@read_bd412350aa6e'
+                            type:
+                              dtype_ref: dtype_99c62bfe771f
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                      sep:
+                        op: Literal
+                        value: ','
+                        type:
+                          dtype_ref: dtype_b10497e9b395
+                      type:
+                        dtype_ref: dtype_b10497e9b395
+                    - op: Literal
+                      value: '111793196543967404139194827996419963236210979610743141064269745943111491389389'
+                      type:
+                        dtype_ref: dtype_b10497e9b395
+                  type:
+                    dtype_ref: dtype_b10497e9b395
+                - op: str
+                  value: _9446d668d378c2e5d3c97a26eb30741e
+              type:
+                dtype_ref: dtype_99c62bfe771f
+            type:
+              dtype_ref: dtype_99c62bfe771f
+          right:
+            op: Literal
+            value: 10000
+            type:
+              dtype_ref: dtype_1c0ba5184c57
+          type:
+            dtype_ref: dtype_99c62bfe771f
+        type:
+          dtype_ref: dtype_412c64af1deb
+      - op: Less
+        left:
+          op: Modulus
+          left:
+            op: Abs
+            arg:
+              op: Hash
+              arg:
+                op: Alias
+                type:
+                  dtype_ref: dtype_b10497e9b395
+                args:
+                - op: StringConcat
+                  arg:
+                    op: tuple
+                    values:
+                    - op: StringJoin
+                      arg:
+                        op: tuple
+                        values:
+                        - op: Cast
+                          arg:
+                            op: Field
+                            name: a
+                            relation:
+                              node_ref: '@read_bd412350aa6e'
+                            type:
+                              dtype_ref: dtype_99c62bfe771f
+                          to:
+                            dtype_ref: dtype_b10497e9b395
+                          type:
+                            dtype_ref: dtype_b10497e9b395
+                      sep:
+                        op: Literal
+                        value: ','
+                        type:
+                          dtype_ref: dtype_b10497e9b395
+                      type:
+                        dtype_ref: dtype_b10497e9b395
+                    - op: Literal
+                      value: '111793196543967404139194827996419963236210979610743141064269745943111491389389'
+                      type:
+                        dtype_ref: dtype_b10497e9b395
+                  type:
+                    dtype_ref: dtype_b10497e9b395
+                - op: str
+                  value: _9446d668d378c2e5d3c97a26eb30741e
+              type:
+                dtype_ref: dtype_99c62bfe771f
+            type:
+              dtype_ref: dtype_99c62bfe771f
+          right:
+            op: Literal
+            value: 10000
+            type:
+              dtype_ref: dtype_1c0ba5184c57
+          type:
+            dtype_ref: dtype_99c62bfe771f
+        right:
+          op: Multiply
+          left:
+            op: Cast
+            arg:
+              op: Literal
+              value: 0.5
+              type:
+                dtype_ref: dtype_2477faedcb32
+            to:
+              dtype_ref: dtype_596db6c249de
+            type:
+              dtype_ref: dtype_596db6c249de
+          right:
+            op: Literal
+            value: 10000
+            type:
+              dtype_ref: dtype_1c0ba5184c57
+          type:
+            dtype_ref: dtype_596db6c249de
+        type:
+          dtype_ref: dtype_412c64af1deb
+      snapshot_hash: bbbaeda54a9773cbb9dc78aca0ce276c
+    '@tag_0199649ac8dc':
+      op: Tag
+      parent:
+        node_ref: '@filter_bbbaeda54a97'
+      metadata:
+        op: FrozenOrderedDict
+        tag:
+          op: str
+          value: train_test_split
+        split_i:
+          op: int
+          value: 1
+        split_size:
+          op: float
+          value: '0.3'
+        test_sizes:
+          op: tuple
+          values:
+          - op: float
+            value: '0.2'
+          - op: float
+            value: '0.3'
+          - op: float
+            value: '0.5'
+        num_buckets:
+          op: int
+          value: 10000
+        unique_key:
+          op: tuple
+          values:
+          - op: str
+            value: a
+      schema_ref: schema_2ad89b788f75
+      snapshot_hash: 0199649ac8dc82fc96ce69ccb029d218
+    '@project_00d73df4fffe':
+      op: Project
+      parent:
+        node_ref: '@tag_0199649ac8dc'
+      values:
+        a:
+          op: Field
+          name: a
+          relation:
+            node_ref: '@tag_0199649ac8dc'
+          type:
+            dtype_ref: dtype_99c62bfe771f
+        b:
+          op: Field
+          name: b
+          relation:
+            node_ref: '@tag_0199649ac8dc'
+          type:
+            dtype_ref: dtype_99c62bfe771f
+        split:
+          op: Literal
+          value: 1
+          type:
+            dtype_ref: dtype_99c62bfe771f
+      snapshot_hash: 00d73df4fffee712cba425186816228a
+  schemas:
+    schema_2ad89b788f75:
+      a:
+        op: DataType
+        type: Int64
+        nullable:
+          op: bool
+          value: true
+      b:
+        op: DataType
+        type: Int64
+        nullable:
+          op: bool
+          value: true
+    schema_7d5e72123322:
+      a:
+        op: DataType
+        type: Int64
+        nullable:
+          op: bool
+          value: true
+      b:
+        op: DataType
+        type: Int64
+        nullable:
+          op: bool
+          value: true
+      split:
+        op: DataType
+        type: Int64
+        nullable:
+          op: bool
+          value: true
+expression:
+  op: Union
+  left:
+    node_ref: '@project_f847a0bcea92'
+  right:
+    op: Union
+    left:
+      node_ref: '@project_31f34e62c85c'
+    right:
+      node_ref: '@project_00d73df4fffe'
+    distinct:
+      op: bool
+      value: false
+    values: {}
+  distinct:
+    op: bool
+    value: false
+  values: {}
+  schema_ref:
+    schema_ref: schema_7d5e72123322

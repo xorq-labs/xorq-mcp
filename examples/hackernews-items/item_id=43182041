@@ -1,0 +1,1 @@
+{"by": "lmm", "id": 43182041, "kids": [43182081], "parent": 43181813, "text": "&gt; Given an integer n, what is the number of bits required to represent every integer in the range -n..n ?<p>(log n) + 1", "time": 1740560445, "type": "comment"}

@@ -1,0 +1,1 @@
+{"by": "spuz", "id": 43182364, "parent": 43182267, "text": "Absolutely, we have very strict lockdowns on the tables and views available to the users that our application uses. The permissions system in Postgres (for example) are very extensive. We even deny delete and update permissions for most tables so they become append only.", "time": 1740564297, "type": "comment"}

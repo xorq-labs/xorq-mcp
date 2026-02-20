@@ -1,0 +1,1 @@
+{"by": "the8472", "id": 43182476, "parent": 43174955, "text": "With extent-based filesystems you can clone extents and then overwrite one extent and only that becomes unshared.", "time": 1740565677, "type": "comment"}

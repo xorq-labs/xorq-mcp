@@ -1,0 +1,1 @@
+{"by": "slig", "id": 43182468, "parent": 43179892, "text": "I did a lot of trial and concluded the same: for non .COM address we had to use the full HTTPS:&#x2F;&#x2F; prefix otherwise iOS won&#x27;t open it. On Android it opens any TLDs, even unusual ones like .MD or .NZ.", "time": 1740565623, "type": "comment"}

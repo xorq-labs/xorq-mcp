@@ -1,0 +1,18 @@
+5b98e42688e584faced5c97c690b7a27_6:
+  con_name: duckdb
+  kwargs_tuple:
+    database: ':memory:'
+    extensions: null
+    read_only: false
+  idx: 6
+7d9013c20ffb9ed00d0834fb20e2b72e_3:
+  con_name: postgres
+  kwargs_tuple:
+    autocommit: true
+    database: letsql
+    host: examples.letsql.com
+    password: letsql
+    port: 5432
+    schema: null
+    user: letsql
+  idx: 3

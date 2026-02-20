@@ -1,0 +1,1 @@
+{"by": "codemartial", "id": 43182581, "kids": [43182600], "parent": 43182473, "text": "You cannot use LLM models directly.\nYou need to build a system that takes your repository as input and create an Agent that can answer your queries.", "time": 1740566955, "type": "comment"}

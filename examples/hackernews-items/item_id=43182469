@@ -1,0 +1,1 @@
+{"by": "hazzamanic", "descendants": 0, "id": 43182469, "score": 4, "time": 1740565627, "title": "Abusing await with a result type to achieve rust-like error propagation in C#", "type": "story", "url": "https://www.arkleseizure.net/awaitable-results"}

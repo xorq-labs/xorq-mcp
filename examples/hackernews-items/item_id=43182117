@@ -1,0 +1,1 @@
+{"by": "throwaw12", "id": 43182117, "kids": [43182237, 43183956, 43182251, 43182255, 43182141], "parent": 43181862, "text": "This one seems to be optimized for log viewing at the moment, are there any DataDog alternatives built on top of Clickhouse, which supports full range of OpenTelemetry features?", "time": 1740561326, "type": "comment"}

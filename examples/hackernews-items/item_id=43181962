@@ -1,0 +1,1 @@
+{"by": "systay", "id": 43181962, "parent": 43179438, "text": "Which is arguably the most important part of a planner. If you don&#x27;t have good cardinality information, it doesn&#x27;t matter if you have fancy planner strategies. They&#x27;ll be employed in the wrong situation, and won&#x27;t produce the good plans we all want.", "time": 1740559562, "type": "comment"}

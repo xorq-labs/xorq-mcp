@@ -1,0 +1,1 @@
+{"by": "kleiba", "id": 43181946, "parent": 43178043, "text": "If you have 4 <i>unique</i> digits, otherwise it gets even easier.<p>However, for a 6-digit combination, you&#x27;d have to try out 720 combinations in the worst case, so that&#x27;s already quite a bit less feasible. Although given enough time...", "time": 1740559356, "type": "comment"}

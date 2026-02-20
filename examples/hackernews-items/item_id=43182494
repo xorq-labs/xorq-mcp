@@ -1,0 +1,1 @@
+{"by": "the8472", "id": 43182494, "parent": 43174354, "text": "That&#x27;s a ZFS online dedup limitation. I think xfs and btrfs are better prior art here since they use extent-based deduplication and can do offline dedup which means they don&#x27;t have have to keep it in memory and the on-disk metadata is smaller too.", "time": 1740565861, "type": "comment"}

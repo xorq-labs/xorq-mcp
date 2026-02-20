@@ -1,0 +1,1 @@
+{"by": "r0b3r4", "id": 43182381, "parent": 43182183, "text": "As we all know, naming is an unsolvable problem in IT :)<p>Regarding performance - 95% of Telescope&#x27;s speed depends on how fast your ClickHouse responds. If you have a well-optimized schema and use the right indexes, Telescope&#x27;s overhead will be minimal.", "time": 1740564556, "type": "comment"}

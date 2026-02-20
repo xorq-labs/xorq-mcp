@@ -1,0 +1,1 @@
+{"by": "theobr", "id": 43181919, "kids": [43182342, 43182009], "parent": 43181741, "text": "Hi, owner of the fork here.<p>I did a thorough combing of the code base when I forked. Just did another audit and still not seeing anything suspicious. Gutting all of the opencollective and changelog code to be 1000% sure.", "time": 1740559029, "type": "comment"}

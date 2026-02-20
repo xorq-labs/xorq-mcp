@@ -1,0 +1,552 @@
+definitions:
+  dtypes:
+    dtype_b10497e9b395:
+      op: DataType
+      type: String
+      nullable:
+        op: bool
+        value: true
+    dtype_99c62bfe771f:
+      op: DataType
+      type: Int64
+      nullable:
+        op: bool
+        value: true
+    dtype_2477faedcb32:
+      op: DataType
+      type: Float64
+      nullable:
+        op: bool
+        value: true
+    dtype_d7a3617bc05d:
+      op: DataType
+      type: Int8
+      nullable:
+        op: bool
+        value: true
+    dtype_412c64af1deb:
+      op: DataType
+      type: Boolean
+      nullable:
+        op: bool
+        value: true
+  nodes:
+    '@databasetable_1f154164e2bb':
+      op: DatabaseTable
+      table: batting
+      profile: 7d9013c20ffb9ed00d0834fb20e2b72e_3
+      namespace:
+        catalog: null
+        database: null
+      schema_ref: schema_8fd465d1aca7
+      snapshot_hash: 1f154164e2bb34d82c531b7704fde86e
+    '@project_39c3c2a47f19':
+      op: Project
+      parent:
+        node_ref: '@databasetable_1f154164e2bb'
+      values:
+        playerID:
+          op: Field
+          name: playerID
+          relation:
+            node_ref: '@databasetable_1f154164e2bb'
+          type:
+            dtype_ref: dtype_b10497e9b395
+        yearID:
+          op: Field
+          name: yearID
+          relation:
+            node_ref: '@databasetable_1f154164e2bb'
+          type:
+            dtype_ref: dtype_99c62bfe771f
+        stint:
+          op: Field
+          name: stint
+          relation:
+            node_ref: '@databasetable_1f154164e2bb'
+          type:
+            dtype_ref: dtype_99c62bfe771f
+        teamID:
+          op: Field
+          name: teamID
+          relation:
+            node_ref: '@databasetable_1f154164e2bb'
+          type:
+            dtype_ref: dtype_b10497e9b395
+        lgID:
+          op: Field
+          name: lgID
+          relation:
+            node_ref: '@databasetable_1f154164e2bb'
+          type:
+            dtype_ref: dtype_b10497e9b395
+        G:
+          op: Field
+          name: G
+          relation:
+            node_ref: '@databasetable_1f154164e2bb'
+          type:
+            dtype_ref: dtype_99c62bfe771f
+        AB:
+          op: Field
+          name: AB
+          relation:
+            node_ref: '@databasetable_1f154164e2bb'
+          type:
+            dtype_ref: dtype_2477faedcb32
+        R:
+          op: Field
+          name: R
+          relation:
+            node_ref: '@databasetable_1f154164e2bb'
+          type:
+            dtype_ref: dtype_2477faedcb32
+        H:
+          op: Field
+          name: H
+          relation:
+            node_ref: '@databasetable_1f154164e2bb'
+          type:
+            dtype_ref: dtype_2477faedcb32
+        X2B:
+          op: Field
+          name: X2B
+          relation:
+            node_ref: '@databasetable_1f154164e2bb'
+          type:
+            dtype_ref: dtype_2477faedcb32
+        X3B:
+          op: Field
+          name: X3B
+          relation:
+            node_ref: '@databasetable_1f154164e2bb'
+          type:
+            dtype_ref: dtype_2477faedcb32
+        HR:
+          op: Field
+          name: HR
+          relation:
+            node_ref: '@databasetable_1f154164e2bb'
+          type:
+            dtype_ref: dtype_2477faedcb32
+        RBI:
+          op: Field
+          name: RBI
+          relation:
+            node_ref: '@databasetable_1f154164e2bb'
+          type:
+            dtype_ref: dtype_2477faedcb32
+        SB:
+          op: Field
+          name: SB
+          relation:
+            node_ref: '@databasetable_1f154164e2bb'
+          type:
+            dtype_ref: dtype_2477faedcb32
+        CS:
+          op: Field
+          name: CS
+          relation:
+            node_ref: '@databasetable_1f154164e2bb'
+          type:
+            dtype_ref: dtype_2477faedcb32
+        BB:
+          op: Field
+          name: BB
+          relation:
+            node_ref: '@databasetable_1f154164e2bb'
+          type:
+            dtype_ref: dtype_2477faedcb32
+        SO:
+          op: Field
+          name: SO
+          relation:
+            node_ref: '@databasetable_1f154164e2bb'
+          type:
+            dtype_ref: dtype_2477faedcb32
+        IBB:
+          op: Field
+          name: IBB
+          relation:
+            node_ref: '@databasetable_1f154164e2bb'
+          type:
+            dtype_ref: dtype_2477faedcb32
+        HBP:
+          op: Field
+          name: HBP
+          relation:
+            node_ref: '@databasetable_1f154164e2bb'
+          type:
+            dtype_ref: dtype_2477faedcb32
+        SH:
+          op: Field
+          name: SH
+          relation:
+            node_ref: '@databasetable_1f154164e2bb'
+          type:
+            dtype_ref: dtype_2477faedcb32
+        SF:
+          op: Field
+          name: SF
+          relation:
+            node_ref: '@databasetable_1f154164e2bb'
+          type:
+            dtype_ref: dtype_2477faedcb32
+        GIDP:
+          op: Field
+          name: GIDP
+          relation:
+            node_ref: '@databasetable_1f154164e2bb'
+          type:
+            dtype_ref: dtype_2477faedcb32
+        row_number:
+          op: WindowFunction
+          args:
+          - op: RowNumber
+            type:
+              dtype_ref: dtype_99c62bfe771f
+          type:
+            dtype_ref: dtype_99c62bfe771f
+          group_by:
+          - op: Field
+            name: playerID
+            relation:
+              node_ref: '@databasetable_1f154164e2bb'
+            type:
+              dtype_ref: dtype_b10497e9b395
+          order_by:
+          - op: SortKey
+            expr:
+              op: Field
+              name: yearID
+              relation:
+                node_ref: '@databasetable_1f154164e2bb'
+              type:
+                dtype_ref: dtype_99c62bfe771f
+            ascending:
+              op: bool
+              value: true
+            nulls_first:
+              op: bool
+              value: false
+            type:
+              dtype_ref: dtype_99c62bfe771f
+      snapshot_hash: 39c3c2a47f19769ef196228153b3a724
+    '@filter_bbbc02f2e230':
+      op: Filter
+      parent:
+        node_ref: '@project_39c3c2a47f19'
+      predicates:
+      - op: Equals
+        left:
+          op: Field
+          name: row_number
+          relation:
+            node_ref: '@project_39c3c2a47f19'
+          type:
+            dtype_ref: dtype_99c62bfe771f
+        right:
+          op: Literal
+          value: 1
+          type:
+            dtype_ref: dtype_d7a3617bc05d
+        type:
+          dtype_ref: dtype_412c64af1deb
+      snapshot_hash: bbbc02f2e23061354cbf2aa2965f0ffa
+    '@remotetable_8add79e63278':
+      op: RemoteTable
+      table: 74a5910c1786d57ea4cfa67787d40c59
+      profile: 81460d8b971730c8f27ccbff374e2e79_4
+      remote_expr:
+        node_ref: '@filter_bbbc02f2e230'
+      schema_ref: schema_139769213e60
+      snapshot_hash: 8add79e632785e98d8a786568cbf2efc
+    '@cachednode_5c2c915b1652':
+      op: CachedNode
+      name: xorq_cached_node_name_placeholder
+      parent:
+        node_ref: '@remotetable_8add79e63278'
+      source: 81460d8b971730c8f27ccbff374e2e79_4
+      cache:
+        type: ParquetCache
+        source: 81460d8b971730c8f27ccbff374e2e79_4
+        relative_path: parquet
+      schema_ref: schema_139769213e60
+      snapshot_hash: 5c2c915b1652e4e6049f235b9669ed0b
+  schemas:
+    schema_8fd465d1aca7:
+      playerID:
+        op: DataType
+        type: String
+        nullable:
+          op: bool
+          value: true
+      yearID:
+        op: DataType
+        type: Int64
+        nullable:
+          op: bool
+          value: true
+      stint:
+        op: DataType
+        type: Int64
+        nullable:
+          op: bool
+          value: true
+      teamID:
+        op: DataType
+        type: String
+        nullable:
+          op: bool
+          value: true
+      lgID:
+        op: DataType
+        type: String
+        nullable:
+          op: bool
+          value: true
+      G:
+        op: DataType
+        type: Int64
+        nullable:
+          op: bool
+          value: true
+      AB:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      R:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      H:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      X2B:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      X3B:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      HR:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      RBI:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      SB:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      CS:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      BB:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      SO:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      IBB:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      HBP:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      SH:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      SF:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      GIDP:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+    schema_139769213e60:
+      playerID:
+        op: DataType
+        type: String
+        nullable:
+          op: bool
+          value: true
+      yearID:
+        op: DataType
+        type: Int64
+        nullable:
+          op: bool
+          value: true
+      stint:
+        op: DataType
+        type: Int64
+        nullable:
+          op: bool
+          value: true
+      teamID:
+        op: DataType
+        type: String
+        nullable:
+          op: bool
+          value: true
+      lgID:
+        op: DataType
+        type: String
+        nullable:
+          op: bool
+          value: true
+      G:
+        op: DataType
+        type: Int64
+        nullable:
+          op: bool
+          value: true
+      AB:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      R:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      H:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      X2B:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      X3B:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      HR:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      RBI:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      SB:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      CS:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      BB:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      SO:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      IBB:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      HBP:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      SH:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      SF:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      GIDP:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      row_number:
+        op: DataType
+        type: Int64
+        nullable:
+          op: bool
+          value: true
+expression:
+  node_ref: '@cachednode_5c2c915b1652'
+  schema_ref:
+    schema_ref: schema_139769213e60

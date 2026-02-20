@@ -1,0 +1,1 @@
+{"by": "somewhereoutth", "id": 43182605, "parent": 43158696, "text": "Ah got caught by surrogate pairs recently:- javascript sees them as 2 chars when e.g. slicing strings, so it is possible to end up with invalid strings if you chop between a pair.", "time": 1740567296, "type": "comment"}

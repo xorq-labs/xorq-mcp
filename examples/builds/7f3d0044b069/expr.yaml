@@ -1,0 +1,393 @@
+definitions:
+  dtypes:
+    dtype_99c62bfe771f:
+      op: DataType
+      type: Int64
+      nullable:
+        op: bool
+        value: true
+    dtype_1c0ba5184c57:
+      op: DataType
+      type: Int16
+      nullable:
+        op: bool
+        value: true
+    dtype_412c64af1deb:
+      op: DataType
+      type: Boolean
+      nullable:
+        op: bool
+        value: true
+    dtype_b10497e9b395:
+      op: DataType
+      type: String
+      nullable:
+        op: bool
+        value: true
+  nodes:
+    '@databasetable_1f154164e2bb':
+      op: DatabaseTable
+      table: batting
+      profile: 7d9013c20ffb9ed00d0834fb20e2b72e_3
+      namespace:
+        catalog: null
+        database: null
+      schema_ref: schema_8fd465d1aca7
+      snapshot_hash: 1f154164e2bb34d82c531b7704fde86e
+    '@filter_637051821def':
+      op: Filter
+      parent:
+        node_ref: '@databasetable_1f154164e2bb'
+      predicates:
+      - op: Equals
+        left:
+          op: Field
+          name: yearID
+          relation:
+            node_ref: '@databasetable_1f154164e2bb'
+          type:
+            dtype_ref: dtype_99c62bfe771f
+        right:
+          op: Literal
+          value: 2015
+          type:
+            dtype_ref: dtype_1c0ba5184c57
+        type:
+          dtype_ref: dtype_412c64af1deb
+      snapshot_hash: 637051821def43e651c2ff3224ed2bcb
+    '@read_e6d438bd87aa':
+      op: Read
+      method_name: read_parquet
+      name: award_players
+      profile: 5b98e42688e584faced5c97c690b7a27_6
+      read_kwargs:
+      - - paths
+        - /Users/paddy/Library/Caches/pins-py/gs_d3037fb8920d01eb3b262ab08d52335c89ba62aa41299e5236f01807aa8b726d/awards_players/20240711T171119Z-886c4/awards_players.parquet
+      - - table_name
+        - award_players
+      normalize_method: gAWVPgAAAAAAAACMHXhvcnEuY29tbW9uLnV0aWxzLmRlZmVyX3V0aWxzlIwYbm9ybWFsaXplX3JlYWRfcGF0aF9zdGF0lJOULg==
+      schema_ref: schema_05f6d22415ce
+      snapshot_hash: e6d438bd87aa3d84babd6f4c2956312f
+    '@filter_434b4b2d1a7d':
+      op: Filter
+      parent:
+        node_ref: '@read_e6d438bd87aa'
+      predicates:
+      - op: Equals
+        left:
+          op: Field
+          name: lgID
+          relation:
+            node_ref: '@read_e6d438bd87aa'
+          type:
+            dtype_ref: dtype_b10497e9b395
+        right:
+          op: Literal
+          value: NL
+          type:
+            dtype_ref: dtype_b10497e9b395
+        type:
+          dtype_ref: dtype_412c64af1deb
+      snapshot_hash: 434b4b2d1a7d1d1c98d877d80dbc619f
+    '@remotetable_fd0547f9d113':
+      op: RemoteTable
+      table: a983f1c15d5cfae97e364a79b2334af6
+      profile: 7d9013c20ffb9ed00d0834fb20e2b72e_3
+      remote_expr:
+        op: DropColumns
+        parent:
+          node_ref: '@filter_434b4b2d1a7d'
+        columns_to_drop:
+          op: frozenset
+          values:
+          - op: str
+            value: lgID
+          - op: str
+            value: yearID
+      schema_ref: schema_9b9b617fac33
+      snapshot_hash: fd0547f9d113972db173b57c5c7c215f
+    '@joinchain_7f3d0044b069':
+      op: JoinChain
+      first:
+        op: JoinReference
+        parent:
+          node_ref: '@filter_637051821def'
+        identifier:
+          op: int
+          value: 0
+      rest:
+      - how: semi
+        table:
+          op: JoinReference
+          parent:
+            node_ref: '@remotetable_fd0547f9d113'
+          identifier:
+            op: int
+            value: 1
+        predicates:
+        - op: Equals
+          left:
+            op: Field
+            name: playerID
+            relation:
+              op: JoinReference
+              parent:
+                node_ref: '@filter_637051821def'
+              identifier:
+                op: int
+                value: 0
+            type:
+              dtype_ref: dtype_b10497e9b395
+          right:
+            op: Field
+            name: playerID
+            relation:
+              op: JoinReference
+              parent:
+                node_ref: '@remotetable_fd0547f9d113'
+              identifier:
+                op: int
+                value: 1
+            type:
+              dtype_ref: dtype_b10497e9b395
+          type:
+            dtype_ref: dtype_412c64af1deb
+      values:
+        yearID:
+          op: Field
+          name: yearID
+          relation:
+            op: JoinReference
+            parent:
+              node_ref: '@filter_637051821def'
+            identifier:
+              op: int
+              value: 0
+          type:
+            dtype_ref: dtype_99c62bfe771f
+        stint:
+          op: Field
+          name: stint
+          relation:
+            op: JoinReference
+            parent:
+              node_ref: '@filter_637051821def'
+            identifier:
+              op: int
+              value: 0
+          type:
+            dtype_ref: dtype_99c62bfe771f
+      snapshot_hash: 7f3d0044b069cb08e007b19d2e352027
+  schemas:
+    schema_8fd465d1aca7:
+      playerID:
+        op: DataType
+        type: String
+        nullable:
+          op: bool
+          value: true
+      yearID:
+        op: DataType
+        type: Int64
+        nullable:
+          op: bool
+          value: true
+      stint:
+        op: DataType
+        type: Int64
+        nullable:
+          op: bool
+          value: true
+      teamID:
+        op: DataType
+        type: String
+        nullable:
+          op: bool
+          value: true
+      lgID:
+        op: DataType
+        type: String
+        nullable:
+          op: bool
+          value: true
+      G:
+        op: DataType
+        type: Int64
+        nullable:
+          op: bool
+          value: true
+      AB:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      R:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      H:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      X2B:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      X3B:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      HR:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      RBI:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      SB:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      CS:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      BB:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      SO:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      IBB:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      HBP:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      SH:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      SF:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+      GIDP:
+        op: DataType
+        type: Float64
+        nullable:
+          op: bool
+          value: true
+    schema_05f6d22415ce:
+      playerID:
+        op: DataType
+        type: String
+        nullable:
+          op: bool
+          value: true
+      awardID:
+        op: DataType
+        type: String
+        nullable:
+          op: bool
+          value: true
+      yearID:
+        op: DataType
+        type: Int64
+        nullable:
+          op: bool
+          value: true
+      lgID:
+        op: DataType
+        type: String
+        nullable:
+          op: bool
+          value: true
+      tie:
+        op: DataType
+        type: String
+        nullable:
+          op: bool
+          value: true
+      notes:
+        op: DataType
+        type: String
+        nullable:
+          op: bool
+          value: true
+    schema_9b9b617fac33:
+      playerID:
+        op: DataType
+        type: String
+        nullable:
+          op: bool
+          value: true
+      awardID:
+        op: DataType
+        type: String
+        nullable:
+          op: bool
+          value: true
+      tie:
+        op: DataType
+        type: String
+        nullable:
+          op: bool
+          value: true
+      notes:
+        op: DataType
+        type: String
+        nullable:
+          op: bool
+          value: true
+    schema_ddd9ae0f6700:
+      yearID:
+        op: DataType
+        type: Int64
+        nullable:
+          op: bool
+          value: true
+      stint:
+        op: DataType
+        type: Int64
+        nullable:
+          op: bool
+          value: true
+expression:
+  node_ref: '@joinchain_7f3d0044b069'
+  schema_ref:
+    schema_ref: schema_ddd9ae0f6700

@@ -1,0 +1,1 @@
+{"by": "pydry", "id": 43182586, "parent": 43152600, "text": "I havent tried in a while so I just tried my project again and ran into one missing feature straight away: podman-compose cp<p>It&#x27;s basic shit like this which they could fix very easily but I think they just want to push you to use quadlets (systemd).", "time": 1740567093, "type": "comment"}
