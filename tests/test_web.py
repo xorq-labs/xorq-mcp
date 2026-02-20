@@ -5,7 +5,6 @@ import os
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
 import tornado.testing
 import tornado.web
 
@@ -478,7 +477,10 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
         assert resp.code == 404
 
     @patch("xorq_web.handlers.load_lineage_html", return_value={})
-    @patch("xorq_web.handlers.load_build_metadata", return_value={"current_library_version": "0.3.7"})
+    @patch(
+        "xorq_web.handlers.load_build_metadata",
+        return_value={"current_library_version": "0.3.7"},
+    )
     @patch("xorq_web.handlers.ensure_buckaroo_session", return_value={"session": "abc"})
     @patch("xorq_web.handlers.get_entry_revisions", return_value=[])
     @patch("xorq_web.handlers.get_catalog_entries")
@@ -577,9 +579,24 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
         mock_cat.return_value.maybe_get_entry.return_value = mock_entry
 
         mock_revisions.return_value = [
-            {"revision_id": "r1", "build_id": "build-r1", "created_at": "2025-01-01", "is_current": False},
-            {"revision_id": "r2", "build_id": "build-r2", "created_at": "2025-06-01", "is_current": False},
-            {"revision_id": "r3", "build_id": "build-r3", "created_at": "2025-09-01", "is_current": True},
+            {
+                "revision_id": "r1",
+                "build_id": "build-r1",
+                "created_at": "2025-01-01",
+                "is_current": False,
+            },
+            {
+                "revision_id": "r2",
+                "build_id": "build-r2",
+                "created_at": "2025-06-01",
+                "is_current": False,
+            },
+            {
+                "revision_id": "r3",
+                "build_id": "build-r3",
+                "created_at": "2025-09-01",
+                "is_current": True,
+            },
         ]
         mock_entries.return_value = [
             {
@@ -612,7 +629,6 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
             assert "/entry/my_expr@r3" in body
 
     @patch("xorq_web.handlers.load_lineage_html", return_value={})
-
     @patch("xorq_web.handlers.load_build_metadata", return_value={})
     @patch("xorq_web.handlers.ensure_buckaroo_session", return_value={"session": "s1"})
     @patch("xorq_web.handlers.get_entry_revisions")
@@ -633,7 +649,6 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
         mock_revisions,
         mock_bk_session,
         mock_meta,
-
         mock_lineage,
     ):
         import tempfile
@@ -649,7 +664,12 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
         mock_cat.return_value.maybe_get_entry.return_value = mock_entry
 
         mock_revisions.return_value = [
-            {"revision_id": "r1", "build_id": "build-1", "created_at": "2025-01-01", "is_current": True},
+            {
+                "revision_id": "r1",
+                "build_id": "build-1",
+                "created_at": "2025-01-01",
+                "is_current": True,
+            },
         ]
         mock_entries.return_value = [
             {
@@ -675,7 +695,6 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
             assert "revision-nav" not in body
 
     @patch("xorq_web.handlers.load_lineage_html", return_value={})
-
     @patch("xorq_web.handlers.load_build_metadata", return_value={})
     @patch("xorq_web.handlers.ensure_buckaroo_session", return_value={"session": "s1"})
     @patch("xorq_web.handlers.get_entry_revisions", return_value=[])
@@ -696,7 +715,6 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
         mock_revisions,
         mock_bk_session,
         mock_meta,
-
         mock_lineage,
     ):
         import tempfile
@@ -740,7 +758,6 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
             assert "expand the number of rows to 20" in body
 
     @patch("xorq_web.handlers.load_lineage_html", return_value={})
-
     @patch("xorq_web.handlers.load_build_metadata", return_value={})
     @patch("xorq_web.handlers.ensure_buckaroo_session", return_value={"session": "s1"})
     @patch("xorq_web.handlers.get_entry_revisions", return_value=[])
@@ -761,7 +778,6 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
         mock_revisions,
         mock_bk_session,
         mock_meta,
-
         mock_lineage,
     ):
         import tempfile

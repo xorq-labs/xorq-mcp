@@ -13,6 +13,27 @@ dependencies = [
     "tornado>=6.0",
 ]
 
+[project.optional-dependencies]
+test = [
+    "pytest>=7.0",
+    "pytest-mock>=3.10",
+    "ruff>=0.4",
+    "isort>=5.12",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = ["examples"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+skip_glob = ["examples/*"]
+
 [tool.hatch.build.targets.wheel]
 packages = [".", "xorq_web"]
 only-include = ["xorq_mcp_tool.py", "xorq_web"]

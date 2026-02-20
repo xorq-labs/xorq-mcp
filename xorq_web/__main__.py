@@ -13,9 +13,7 @@ os.makedirs(LOG_DIR, exist_ok=True)
 def main():
     parser = argparse.ArgumentParser(description="xorq web server")
     parser.add_argument("--port", type=int, default=8456, help="Port to listen on")
-    parser.add_argument(
-        "--buckaroo-port", type=int, default=8455, help="Buckaroo server port"
-    )
+    parser.add_argument("--buckaroo-port", type=int, default=8455, help="Buckaroo server port")
     args = parser.parse_args()
 
     logging.basicConfig(

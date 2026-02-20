@@ -262,9 +262,13 @@ def ensure_web_server() -> dict:
 
     global _web_server_proc
     cmd = [
-        sys.executable, "-m", "xorq_web",
-        "--port", str(WEB_PORT),
-        "--buckaroo-port", str(SERVER_PORT),
+        sys.executable,
+        "-m",
+        "xorq_web",
+        "--port",
+        str(WEB_PORT),
+        "--buckaroo-port",
+        str(SERVER_PORT),
     ]
     log.info("Starting web server: %s", " ".join(cmd))
 
@@ -286,9 +290,7 @@ def ensure_web_server() -> dict:
 
     log.error("Web server failed to start within 5s — see %s", web_log)
     raise RuntimeError(
-        f"xorq web server failed to start.\n"
-        f"Check log: {web_log}\n"
-        f"Try manually: {' '.join(cmd)}"
+        f"xorq web server failed to start.\nCheck log: {web_log}\nTry manually: {' '.join(cmd)}"
     )
 
 
@@ -318,9 +320,7 @@ def _load_in_buckaroo(path: str, session_id: str = "") -> dict:
 
     server_info = ensure_server()
 
-    payload = json.dumps(
-        {"session": session, "path": path, "mode": "buckaroo"}
-    ).encode()
+    payload = json.dumps({"session": session, "path": path, "mode": "buckaroo"}).encode()
     log.debug("POST %s/load payload=%s", SERVER_URL, payload.decode())
 
     req = Request(
@@ -370,6 +370,7 @@ def _view_impl(path: str) -> str:
 
     # Open the Buckaroo table in the browser
     import webbrowser
+
     webbrowser.open(url)
     browser_action = "opened"
     log.info("Opened browser: %s", url)
@@ -481,13 +482,11 @@ def _register_in_catalog(build_path, alias=None, metadata=None):
             if rev:
                 updated_rev = rev.evolve(metadata=metadata)
                 updated_history = tuple(
-                    updated_rev if r.revision_id == revision_id else r
-                    for r in entry.history
+                    updated_rev if r.revision_id == revision_id else r for r in entry.history
                 )
                 updated_entry = entry.evolve(history=updated_history)
                 updated_entries = tuple(
-                    updated_entry if e.entry_id == entry_id else e
-                    for e in updated_catalog.entries
+                    updated_entry if e.entry_id == entry_id else e for e in updated_catalog.entries
                 )
                 updated_catalog = updated_catalog.evolve(entries=updated_entries)
 
@@ -495,7 +494,10 @@ def _register_in_catalog(build_path, alias=None, metadata=None):
 
     log.info(
         "Registered build %s as entry=%s rev=%s alias=%s metadata=%s",
-        build_info.build_id, entry_id, revision_id, alias,
+        build_info.build_id,
+        entry_id,
+        revision_id,
+        alias,
         list(metadata.keys()) if metadata else None,
     )
     return entry_id, revision_id
@@ -517,14 +519,10 @@ def _update_revision_metadata(entry_id, revision_id, updates):
     merged = dict(rev.metadata or {}, **updates)
     updated_rev = rev.evolve(metadata=merged)
     updated_history = tuple(
-        updated_rev if r.revision_id == revision_id else r
-        for r in entry.history
+        updated_rev if r.revision_id == revision_id else r for r in entry.history
     )
     updated_entry = entry.evolve(history=updated_history)
-    updated_entries = tuple(
-        updated_entry if e.entry_id == entry_id else e
-        for e in catalog.entries
-    )
+    updated_entries = tuple(updated_entry if e.entry_id == entry_id else e for e in catalog.entries)
     updated_catalog = catalog.evolve(entries=updated_entries)
     do_save_catalog(updated_catalog, paths.config_path)
 
@@ -540,7 +538,8 @@ def xorq_run(script_path: str, expr_name: str = "expr", alias: str = "", prompt:
         script_path: Path to a .py or .ipynb file containing a xorq expression.
         expr_name: Name of the expression variable in the script (default: "expr").
         alias: Optional catalog alias to register this build under.
-        prompt: Optional prompt/description that produced this expression (stored as revision metadata).
+        prompt: Optional prompt/description that produced this expression
+            (stored as revision metadata).
     """
     from xorq.common.utils.caching_utils import get_xorq_cache_dir
     from xorq.common.utils.import_utils import import_from_path
@@ -769,14 +768,16 @@ def xorq_catalog_ls() -> str:
 
         aliases = alias_lookup.get(entry.entry_id, [])
         display_name = aliases[0] if aliases else entry.entry_id[:12]
-        entry_rows.append({
-            "display_name": display_name,
-            "aliases": aliases,
-            "entry_id": entry.entry_id,
-            "revision": curr_rev,
-            "build_id": build_id,
-            "created_at": created_at,
-        })
+        entry_rows.append(
+            {
+                "display_name": display_name,
+                "aliases": aliases,
+                "entry_id": entry.entry_id,
+                "revision": curr_rev,
+                "build_id": build_id,
+                "created_at": created_at,
+            }
+        )
 
     # Open the xorq web catalog page
     import webbrowser
@@ -888,10 +889,7 @@ def xorq_lineage(target: str, column: str = "") -> str:
 
     if column:
         if column not in trees:
-            return (
-                f"Column '{column}' not found. "
-                f"Available columns: {', '.join(trees.keys())}"
-            )
+            return f"Column '{column}' not found. Available columns: {', '.join(trees.keys())}"
         trees = {column: trees[column]}
 
     lines = []
@@ -971,10 +969,7 @@ def xorq_diff_builds(left: str, right: str) -> str:
         return f"No differences between builds.\n  left:  {left_dir}\n  right: {right_dir}"
 
     return (
-        f"## Diff: expr.yaml\n"
-        f"left:  {left_dir}\n"
-        f"right: {right_dir}\n\n"
-        f"```diff\n{diff_output}\n```"
+        f"## Diff: expr.yaml\nleft:  {left_dir}\nright: {right_dir}\n\n```diff\n{diff_output}\n```"
     )
 
 

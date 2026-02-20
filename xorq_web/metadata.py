@@ -74,9 +74,7 @@ def _render_node_html(node) -> str:
     return f"<li>{label}\n<ul>{children_html}</ul></li>"
 
 
-def ensure_buckaroo_session(
-    parquet_path: str, session_id: str, buckaroo_port: int
-) -> dict:
+def ensure_buckaroo_session(parquet_path: str, session_id: str, buckaroo_port: int) -> dict:
     """POST to Buckaroo /load to ensure a session exists for this data.
 
     Returns the Buckaroo response dict with session, rows, columns, etc.
@@ -120,15 +118,17 @@ def get_all_runs() -> list[dict]:
 
         for rev in entry.history:
             meta = rev.metadata or {}
-            runs.append({
-                "display_name": display_name,
-                "entry_id": entry.entry_id,
-                "revision_id": rev.revision_id,
-                "build_id": rev.build.build_id if rev.build else None,
-                "created_at": str(rev.created_at) if rev.created_at else None,
-                "prompt": meta.get("prompt"),
-                "execute_seconds": meta.get("execute_seconds"),
-            })
+            runs.append(
+                {
+                    "display_name": display_name,
+                    "entry_id": entry.entry_id,
+                    "revision_id": rev.revision_id,
+                    "build_id": rev.build.build_id if rev.build else None,
+                    "created_at": str(rev.created_at) if rev.created_at else None,
+                    "prompt": meta.get("prompt"),
+                    "execute_seconds": meta.get("execute_seconds"),
+                }
+            )
 
     runs.sort(key=lambda r: r["created_at"] or "", reverse=True)
     return runs
@@ -193,13 +193,15 @@ def get_catalog_entries() -> list[dict]:
         aliases = alias_lookup.get(entry.entry_id, [])
         display_name = aliases[0] if aliases else entry.entry_id[:12]
 
-        entries.append({
-            "display_name": display_name,
-            "aliases": aliases,
-            "entry_id": entry.entry_id,
-            "revision": curr_rev,
-            "build_id": build_id,
-            "created_at": created_at,
-        })
+        entries.append(
+            {
+                "display_name": display_name,
+                "aliases": aliases,
+                "entry_id": entry.entry_id,
+                "revision": curr_rev,
+                "build_id": build_id,
+                "created_at": created_at,
+            }
+        )
 
     return entries

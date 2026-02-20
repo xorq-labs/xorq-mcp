@@ -108,14 +108,14 @@ class ExpressionDetailHandler(tornado.web.RequestHandler):
             RESULTS_DIR.mkdir(parents=True, exist_ok=True)
             output_path = RESULTS_DIR / f"{build_id}.parquet"
             expr.to_parquet(str(output_path))
-            result = ensure_buckaroo_session(
-                str(output_path), build_id, buckaroo_port
-            )
+            ensure_buckaroo_session(str(output_path), build_id, buckaroo_port)
             buckaroo_session = build_id
         except Exception as exc:
             log.error(
                 "Failed to load expression for %s: %s\n%s",
-                target, exc, traceback.format_exc(),
+                target,
+                exc,
+                traceback.format_exc(),
             )
 
         # Load lineage

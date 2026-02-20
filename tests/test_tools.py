@@ -1,8 +1,5 @@
 """Basic tests for xorq MCP tools."""
 
-import os
-import tempfile
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -52,9 +49,7 @@ class TestCatalogLs:
     def test_empty_catalog(self):
         from xorq.catalog import XorqCatalog
 
-        with patch(
-            "xorq.catalog.load_catalog", return_value=XorqCatalog()
-        ):
+        with patch("xorq.catalog.load_catalog", return_value=XorqCatalog()):
             from xorq_mcp_tool import xorq_catalog_ls
 
             result = xorq_catalog_ls()
@@ -67,9 +62,7 @@ class TestDiffBuilds:
     def test_missing_left_target(self):
         from xorq.catalog import XorqCatalog
 
-        with patch(
-            "xorq.catalog.load_catalog", return_value=XorqCatalog()
-        ):
+        with patch("xorq.catalog.load_catalog", return_value=XorqCatalog()):
             from xorq_mcp_tool import xorq_diff_builds
 
             result = xorq_diff_builds("/nonexistent/left", "/nonexistent/right")
@@ -82,9 +75,7 @@ class TestLineage:
     def test_missing_build_target(self):
         from xorq.catalog import XorqCatalog
 
-        with patch(
-            "xorq.catalog.load_catalog", return_value=XorqCatalog()
-        ):
+        with patch("xorq.catalog.load_catalog", return_value=XorqCatalog()):
             from xorq_mcp_tool import xorq_lineage
 
             result = xorq_lineage("/nonexistent/build")
