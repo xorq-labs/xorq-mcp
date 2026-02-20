@@ -501,6 +501,34 @@ def _register_in_catalog(build_path, alias=None, metadata=None):
     return entry_id, revision_id
 
 
+def _update_revision_metadata(entry_id, revision_id, updates):
+    """Merge additional keys into a revision's metadata dict and re-save the catalog."""
+    from xorq.catalog import CatalogPaths, do_save_catalog, load_catalog
+
+    paths = CatalogPaths.create()
+    catalog = load_catalog(path=paths.config_path)
+    entry = catalog.maybe_get_entry(entry_id)
+    if not entry:
+        return
+    rev = entry.maybe_get_revision(revision_id)
+    if not rev:
+        return
+
+    merged = dict(rev.metadata or {}, **updates)
+    updated_rev = rev.evolve(metadata=merged)
+    updated_history = tuple(
+        updated_rev if r.revision_id == revision_id else r
+        for r in entry.history
+    )
+    updated_entry = entry.evolve(history=updated_history)
+    updated_entries = tuple(
+        updated_entry if e.entry_id == entry_id else e
+        for e in catalog.entries
+    )
+    updated_catalog = catalog.evolve(entries=updated_entries)
+    do_save_catalog(updated_catalog, paths.config_path)
+
+
 @mcp.tool()
 def xorq_run(script_path: str, expr_name: str = "expr", alias: str = "", prompt: str = "") -> str:
     """Build, execute, and visualize a xorq expression from a Python script.
@@ -557,6 +585,7 @@ def xorq_run(script_path: str, expr_name: str = "expr", alias: str = "", prompt:
         # Derive alias from script filename (e.g., "simple_example" from "simple_example.py")
         catalog_alias = Path(script_path).stem
     revision_metadata = {"prompt": prompt} if prompt else None
+    entry_id = revision_id = None
     try:
         entry_id, revision_id = _register_in_catalog(
             build_path, alias=catalog_alias, metadata=revision_metadata
@@ -574,15 +603,21 @@ def xorq_run(script_path: str, expr_name: str = "expr", alias: str = "", prompt:
         log.error("load_expr failed: %s\n%s", exc, traceback.format_exc())
         return f"Error loading expression: {exc}"
 
-    # 5. Execute to parquet
+    # 5. Execute to parquet (timed)
     output_path = RESULTS_DIR / f"{build_hash}.parquet"
+    t0 = time.monotonic()
     try:
         loaded_expr.to_parquet(str(output_path))
     except Exception as exc:
         log.error("to_parquet failed: %s\n%s", exc, traceback.format_exc())
         return f"Error executing expression: {exc}"
+    execute_seconds = round(time.monotonic() - t0, 3)
 
-    log.info("Expression executed — output=%s", output_path)
+    log.info("Expression executed in %.3fs — output=%s", execute_seconds, output_path)
+
+    # Store execute time on the revision metadata
+    if entry_id and revision_id:
+        _update_revision_metadata(entry_id, revision_id, {"execute_seconds": execute_seconds})
 
     # 6. Open in xorq web UI
     import webbrowser
