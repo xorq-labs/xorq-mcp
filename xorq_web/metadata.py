@@ -96,6 +96,34 @@ def ensure_buckaroo_session(
     return json.loads(resp.read())
 
 
+def get_entry_revisions(target: str) -> list[dict]:
+    """Return all revisions for the entry that target resolves to.
+
+    Each dict: {revision_id, build_id, created_at, is_current}
+    Returns [] if target can't be resolved.
+    """
+    from xorq.catalog import Target, load_catalog
+
+    catalog = load_catalog()
+    resolved = Target.from_str(target, catalog)
+    if resolved is None:
+        return []
+
+    entry = catalog.maybe_get_entry(resolved.entry_id)
+    if entry is None:
+        return []
+
+    return [
+        {
+            "revision_id": rev.revision_id,
+            "build_id": rev.build.build_id if rev.build else None,
+            "created_at": str(rev.created_at) if rev.created_at else None,
+            "is_current": rev.revision_id == entry.current_revision,
+        }
+        for rev in entry.history
+    ]
+
+
 def get_catalog_entries() -> list[dict]:
     """Load catalog and return a list of entry dicts for navigation.
 

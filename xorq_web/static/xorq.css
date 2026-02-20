@@ -206,6 +206,74 @@ body {
   gap: 0.75rem;
 }
 
+/* --- Revision navigation --- */
+.revision-nav {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.revision-arrows {
+  flex-shrink: 0;
+}
+
+.rev-arrow {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.rev-arrow:hover {
+  background: rgba(74, 125, 255, 0.12);
+}
+
+.rev-arrow.disabled {
+  color: var(--text-muted);
+  opacity: 0.4;
+  cursor: default;
+}
+
+.revision-badges {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.rev-badge {
+  display: inline-block;
+  background: var(--badge-bg);
+  color: var(--text-secondary);
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-family: monospace;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.rev-badge:hover {
+  background: rgba(74, 125, 255, 0.12);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.rev-badge.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
 /* --- Metadata grid --- */
 .metadata-grid {
   display: grid;

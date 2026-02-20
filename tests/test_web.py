@@ -13,6 +13,7 @@ from xorq_web.app import make_app
 from xorq_web.metadata import (
     _render_node_html,
     get_catalog_entries,
+    get_entry_revisions,
     load_build_metadata,
     load_build_schema,
     load_lineage_html,
@@ -196,6 +197,97 @@ class TestGetCatalogEntries:
 
 
 # -----------------------------------------------------------------------
+# metadata.py — get_entry_revisions
+# -----------------------------------------------------------------------
+class TestGetEntryRevisions:
+    def _make_revision(self, revision_id, build_id=None, created_at=None):
+        mock_rev = MagicMock()
+        mock_rev.revision_id = revision_id
+        mock_rev.created_at = created_at
+        if build_id:
+            mock_rev.build = MagicMock()
+            mock_rev.build.build_id = build_id
+        else:
+            mock_rev.build = None
+        return mock_rev
+
+    def _make_catalog(self, entry_id, revisions, alias_name=None, current_revision=None):
+        mock_entry = MagicMock()
+        mock_entry.entry_id = entry_id
+        mock_entry.current_revision = current_revision or revisions[-1].revision_id
+        mock_entry.history = revisions
+
+        mock_catalog = MagicMock()
+        mock_catalog.entries = [mock_entry]
+
+        if alias_name:
+            mock_alias = MagicMock()
+            mock_alias.entry_id = entry_id
+            mock_alias.revision_id = current_revision or revisions[-1].revision_id
+            mock_catalog.aliases = {alias_name: mock_alias}
+        else:
+            mock_catalog.aliases = {}
+
+        # Wire up maybe_get_entry
+        mock_catalog.maybe_get_entry = lambda eid: mock_entry if eid == entry_id else None
+
+        return mock_catalog
+
+    def test_returns_empty_for_unknown_target(self):
+        from xorq.catalog import Target
+
+        with patch("xorq.catalog.load_catalog") as mock_load:
+            mock_catalog = MagicMock()
+            mock_catalog.entries = []
+            mock_catalog.aliases = {}
+            mock_load.return_value = mock_catalog
+            with patch.object(Target, "from_str", return_value=None):
+                result = get_entry_revisions("nonexistent")
+                assert result == []
+
+    def test_returns_all_revisions_for_alias(self):
+        from xorq.catalog import Target
+
+        r1 = self._make_revision("r1", build_id="build-aaa", created_at="2025-01-01")
+        r2 = self._make_revision("r2", build_id="build-bbb", created_at="2025-02-01")
+        r3 = self._make_revision("r3", build_id="build-ccc", created_at="2025-03-01")
+        catalog = self._make_catalog("entry-uuid", [r1, r2, r3], alias_name="my_expr")
+
+        mock_target = MagicMock()
+        mock_target.entry_id = "entry-uuid"
+        mock_target.rev = "r3"
+
+        with patch("xorq.catalog.load_catalog", return_value=catalog):
+            with patch.object(Target, "from_str", return_value=mock_target):
+                result = get_entry_revisions("my_expr")
+
+        assert len(result) == 3
+        assert result[0]["revision_id"] == "r1"
+        assert result[1]["revision_id"] == "r2"
+        assert result[2]["revision_id"] == "r3"
+        assert result[2]["is_current"] is True
+        assert result[0]["is_current"] is False
+        assert result[1]["build_id"] == "build-bbb"
+
+    def test_marks_correct_current_revision(self):
+        from xorq.catalog import Target
+
+        r1 = self._make_revision("r1", build_id="b1")
+        r2 = self._make_revision("r2", build_id="b2")
+        catalog = self._make_catalog("e1", [r1, r2], alias_name="expr", current_revision="r2")
+
+        mock_target = MagicMock()
+        mock_target.entry_id = "e1"
+
+        with patch("xorq.catalog.load_catalog", return_value=catalog):
+            with patch.object(Target, "from_str", return_value=mock_target):
+                result = get_entry_revisions("expr")
+
+        assert result[0]["is_current"] is False
+        assert result[1]["is_current"] is True
+
+
+# -----------------------------------------------------------------------
 # app.py — make_app
 # -----------------------------------------------------------------------
 class TestMakeApp:
@@ -284,24 +376,38 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
     @patch("xorq_web.handlers.load_build_schema", return_value=[("id", "int64")])
     @patch("xorq_web.handlers.load_build_metadata", return_value={"current_library_version": "0.3.7"})
     @patch("xorq_web.handlers.ensure_buckaroo_session", return_value={"session": "abc"})
+    @patch("xorq_web.handlers.get_entry_revisions", return_value=[])
     @patch("xorq_web.handlers.get_catalog_entries")
     @patch("xorq.catalog.resolve_build_dir")
     @patch("xorq.catalog.load_catalog")
+    @patch("xorq.catalog.Target.from_str")
     @patch("xorq.ibis_yaml.compiler.load_expr")
     @patch("xorq.common.utils.caching_utils.get_xorq_cache_dir", return_value="/tmp/cache")
     def test_valid_target_renders_detail(
         self,
         mock_cache,
         mock_load_expr,
+        mock_target_from_str,
         mock_cat,
         mock_resolve,
         mock_entries,
+        mock_revisions,
         mock_bk_session,
         mock_meta,
         mock_schema,
         mock_lineage,
     ):
         import tempfile
+
+        mock_resolved = MagicMock()
+        mock_resolved.entry_id = "uuid-1"
+        mock_resolved.rev = "r2"
+        mock_target_from_str.return_value = mock_resolved
+
+        mock_entry = MagicMock()
+        mock_entry.entry_id = "uuid-1"
+        mock_entry.maybe_get_revision.return_value = None
+        mock_cat.return_value.maybe_get_entry.return_value = mock_entry
 
         with tempfile.TemporaryDirectory() as td:
             build_dir = Path(td) / "abc123"
@@ -327,6 +433,146 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
             assert "abc123" in body
             assert "0.3.7" in body
             assert "int64" in body
+
+    @patch("xorq_web.handlers.load_lineage_html", return_value={})
+    @patch("xorq_web.handlers.load_build_schema", return_value=[])
+    @patch("xorq_web.handlers.load_build_metadata", return_value={})
+    @patch("xorq_web.handlers.ensure_buckaroo_session", return_value={"session": "s1"})
+    @patch("xorq_web.handlers.get_entry_revisions")
+    @patch("xorq_web.handlers.get_catalog_entries")
+    @patch("xorq.catalog.resolve_build_dir")
+    @patch("xorq.catalog.load_catalog")
+    @patch("xorq.catalog.Target.from_str")
+    @patch("xorq.ibis_yaml.compiler.load_expr")
+    @patch("xorq.common.utils.caching_utils.get_xorq_cache_dir", return_value="/tmp/cache")
+    def test_revision_nav_renders_prev_next(
+        self,
+        mock_cache,
+        mock_load_expr,
+        mock_target_from_str,
+        mock_cat,
+        mock_resolve,
+        mock_entries,
+        mock_revisions,
+        mock_bk_session,
+        mock_meta,
+        mock_schema,
+        mock_lineage,
+    ):
+        import tempfile
+
+        # Simulate viewing r2 of 3 revisions
+        mock_resolved = MagicMock()
+        mock_resolved.entry_id = "uuid-1"
+        mock_resolved.rev = "r2"
+        mock_target_from_str.return_value = mock_resolved
+
+        mock_rev_obj = MagicMock()
+        mock_rev_obj.created_at = "2025-06-01"
+        mock_rev_obj.build = MagicMock()
+        mock_rev_obj.build.build_id = "build-r2"
+        mock_entry = MagicMock()
+        mock_entry.entry_id = "uuid-1"
+        mock_entry.maybe_get_revision.return_value = mock_rev_obj
+        mock_cat.return_value.maybe_get_entry.return_value = mock_entry
+
+        mock_revisions.return_value = [
+            {"revision_id": "r1", "build_id": "build-r1", "created_at": "2025-01-01", "is_current": False},
+            {"revision_id": "r2", "build_id": "build-r2", "created_at": "2025-06-01", "is_current": False},
+            {"revision_id": "r3", "build_id": "build-r3", "created_at": "2025-09-01", "is_current": True},
+        ]
+        mock_entries.return_value = [
+            {
+                "display_name": "my_expr",
+                "aliases": ["my_expr"],
+                "entry_id": "uuid-1",
+                "revision": "r3",
+                "build_id": "build-r3",
+                "created_at": "2025-09-01",
+            },
+        ]
+
+        with tempfile.TemporaryDirectory() as td:
+            build_dir = Path(td) / "build-r2"
+            build_dir.mkdir()
+            mock_resolve.return_value = build_dir
+            mock_load_expr.return_value = MagicMock()
+
+            resp = self.fetch("/entry/my_expr@r2")
+            assert resp.code == 200
+            body = resp.body.decode()
+
+            # Should show revision nav with prev (r1) and next (r3)
+            assert "my_expr@r1" in body
+            assert "my_expr@r2" in body
+            assert "my_expr@r3" in body
+            # Prev arrow should link to r1
+            assert "/entry/my_expr@r1" in body
+            # Next arrow should link to r3
+            assert "/entry/my_expr@r3" in body
+
+    @patch("xorq_web.handlers.load_lineage_html", return_value={})
+    @patch("xorq_web.handlers.load_build_schema", return_value=[])
+    @patch("xorq_web.handlers.load_build_metadata", return_value={})
+    @patch("xorq_web.handlers.ensure_buckaroo_session", return_value={"session": "s1"})
+    @patch("xorq_web.handlers.get_entry_revisions")
+    @patch("xorq_web.handlers.get_catalog_entries")
+    @patch("xorq.catalog.resolve_build_dir")
+    @patch("xorq.catalog.load_catalog")
+    @patch("xorq.catalog.Target.from_str")
+    @patch("xorq.ibis_yaml.compiler.load_expr")
+    @patch("xorq.common.utils.caching_utils.get_xorq_cache_dir", return_value="/tmp/cache")
+    def test_no_revision_nav_for_single_revision(
+        self,
+        mock_cache,
+        mock_load_expr,
+        mock_target_from_str,
+        mock_cat,
+        mock_resolve,
+        mock_entries,
+        mock_revisions,
+        mock_bk_session,
+        mock_meta,
+        mock_schema,
+        mock_lineage,
+    ):
+        import tempfile
+
+        mock_resolved = MagicMock()
+        mock_resolved.entry_id = "uuid-1"
+        mock_resolved.rev = "r1"
+        mock_target_from_str.return_value = mock_resolved
+
+        mock_entry = MagicMock()
+        mock_entry.entry_id = "uuid-1"
+        mock_entry.maybe_get_revision.return_value = None
+        mock_cat.return_value.maybe_get_entry.return_value = mock_entry
+
+        mock_revisions.return_value = [
+            {"revision_id": "r1", "build_id": "build-1", "created_at": "2025-01-01", "is_current": True},
+        ]
+        mock_entries.return_value = [
+            {
+                "display_name": "solo_expr",
+                "aliases": ["solo_expr"],
+                "entry_id": "uuid-1",
+                "revision": "r1",
+                "build_id": "build-1",
+                "created_at": "2025-01-01",
+            },
+        ]
+
+        with tempfile.TemporaryDirectory() as td:
+            build_dir = Path(td) / "build-1"
+            build_dir.mkdir()
+            mock_resolve.return_value = build_dir
+            mock_load_expr.return_value = MagicMock()
+
+            resp = self.fetch("/entry/solo_expr")
+            assert resp.code == 200
+            body = resp.body.decode()
+            # Should NOT render the revision nav bar for a single revision
+            assert "revision-nav" not in body
 
 
 # -----------------------------------------------------------------------

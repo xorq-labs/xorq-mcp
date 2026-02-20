@@ -11,6 +11,7 @@ import tornado.web
 from xorq_web.metadata import (
     ensure_buckaroo_session,
     get_catalog_entries,
+    get_entry_revisions,
     load_build_metadata,
     load_build_schema,
     load_lineage_html,
@@ -34,7 +35,7 @@ class CatalogIndexHandler(tornado.web.RequestHandler):
 
 class ExpressionDetailHandler(tornado.web.RequestHandler):
     def get(self, target: str):
-        from xorq.catalog import load_catalog, resolve_build_dir
+        from xorq.catalog import Target, load_catalog, resolve_build_dir
         from xorq.common.utils.caching_utils import get_xorq_cache_dir
         from xorq.ibis_yaml.compiler import load_expr
 
@@ -48,18 +49,51 @@ class ExpressionDetailHandler(tornado.web.RequestHandler):
             self.write(f"Build target not found: {target}")
             return
 
+        # Parse base name (strip @rN) for display and revision nav links
+        base_name = target.split("@")[0]
+
+        # Resolve the target to get the actual revision being viewed
+        resolved = Target.from_str(target, catalog)
+        current_rev_id = resolved.rev if resolved else None
+
         # Find the matching catalog entry for display info
-        display_name = target
-        revision = None
+        display_name = base_name
+        revision = current_rev_id
         build_id = build_dir.name
         created_at = None
         for e in nav_entries:
-            if e["display_name"] == target or e["entry_id"] == target:
+            if e["display_name"] == base_name or e["entry_id"] == base_name:
                 display_name = e["display_name"]
-                revision = e["revision"]
                 build_id = e["build_id"] or build_dir.name
-                created_at = e["created_at"]
                 break
+
+        # Look up created_at from the specific revision
+        if resolved:
+            entry = catalog.maybe_get_entry(resolved.entry_id)
+            if entry:
+                rev_obj = entry.maybe_get_revision(current_rev_id)
+                if rev_obj:
+                    created_at = str(rev_obj.created_at) if rev_obj.created_at else None
+                    if rev_obj.build:
+                        build_id = rev_obj.build.build_id
+
+        # Compute revision navigation
+        revisions = get_entry_revisions(target)
+        prev_url = None
+        next_url = None
+        prev_rev_id = None
+        next_rev_id = None
+        if revisions:
+            current_idx = next(
+                (i for i, r in enumerate(revisions) if r["revision_id"] == current_rev_id),
+                None,
+            )
+            if current_idx is not None and current_idx > 0:
+                prev_rev_id = revisions[current_idx - 1]["revision_id"]
+                prev_url = f"/entry/{display_name}@{prev_rev_id}"
+            if current_idx is not None and current_idx < len(revisions) - 1:
+                next_rev_id = revisions[current_idx + 1]["revision_id"]
+                next_url = f"/entry/{display_name}@{next_rev_id}"
 
         # Load metadata
         metadata = load_build_metadata(build_dir)
@@ -99,6 +133,12 @@ class ExpressionDetailHandler(tornado.web.RequestHandler):
             buckaroo_port=buckaroo_port,
             buckaroo_session=buckaroo_session,
             lineage=lineage,
+            revisions=revisions,
+            current_rev_id=current_rev_id,
+            prev_url=prev_url,
+            next_url=next_url,
+            prev_rev_id=prev_rev_id,
+            next_rev_id=next_rev_id,
         )
 
 

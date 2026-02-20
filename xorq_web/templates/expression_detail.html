@@ -7,6 +7,34 @@
   <h1>{{ display_name }} <span class="badge">{{ revision or "" }}</span></h1>
 </div>
 
+<!-- Revision navigation -->
+{% if revisions and len(revisions) > 1 %}
+<div class="revision-nav">
+  <div class="revision-arrows">
+    {% if prev_url %}
+    <a href="{{ prev_url }}" class="rev-arrow">&larr; {{ prev_rev_id }}</a>
+    {% else %}
+    <span class="rev-arrow disabled">&larr;</span>
+    {% end %}
+  </div>
+  <div class="revision-badges">
+    {% for rev in revisions %}
+    <a href="/entry/{{ display_name }}@{{ rev['revision_id'] }}"
+       class="rev-badge {% if rev['revision_id'] == current_rev_id %}active{% end %}">
+      {{ rev["revision_id"] }}
+    </a>
+    {% end %}
+  </div>
+  <div class="revision-arrows">
+    {% if next_url %}
+    <a href="{{ next_url }}" class="rev-arrow">{{ next_rev_id }} &rarr;</a>
+    {% else %}
+    <span class="rev-arrow disabled">&rarr;</span>
+    {% end %}
+  </div>
+</div>
+{% end %}
+
 <!-- Metadata grid -->
 <div class="metadata-grid">
   <div class="metadata-item">
