@@ -38,9 +38,8 @@ log = logging.getLogger("xorq.mcp_tool")
 # ---------------------------------------------------------------------------
 SERVER_PORT = int(os.environ.get("XORQ_PORT", "8455"))
 SERVER_URL = f"http://localhost:{SERVER_PORT}"
-SESSION_ID = uuid.uuid4().hex[:12]
 
-log.info("MCP tool starting — server=%s session=%s", SERVER_URL, SESSION_ID)
+log.info("MCP tool starting — server=%s", SERVER_URL)
 
 # ---------------------------------------------------------------------------
 # Results directory for parquet output
@@ -232,31 +231,57 @@ def ensure_server() -> dict:
 # ---------------------------------------------------------------------------
 # View implementation (POST to buckaroo server)
 # ---------------------------------------------------------------------------
+def _content_id(path: str) -> str:
+    """Derive a content-based ID from a file path.
+
+    For parquet files produced by xorq builds, the filename already is a
+    content hash (e.g. ``413c1b285ad9.parquet``), so we use the stem directly.
+    For other files we hash the absolute path.
+    """
+    import hashlib
+
+    stem = Path(path).stem
+    # If the stem looks like a hex hash (8+ hex chars), use it as-is
+    if len(stem) >= 8 and all(c in "0123456789abcdef" for c in stem):
+        return stem
+    return hashlib.sha1(os.path.abspath(path).encode()).hexdigest()[:12]
+
+
+def _load_in_buckaroo(path: str, session_id: str = "") -> dict:
+    """Load a file into Buckaroo and return result metadata (no browser open)."""
+    path = os.path.abspath(path)
+    session = session_id or _content_id(path)
+
+    server_info = ensure_server()
+
+    payload = json.dumps(
+        {"session": session, "path": path, "mode": "buckaroo"}
+    ).encode()
+    log.debug("POST %s/load payload=%s", SERVER_URL, payload.decode())
+
+    req = Request(
+        f"{SERVER_URL}/load",
+        data=payload,
+        headers={"Content-Type": "application/json"},
+    )
+    resp = urlopen(req, timeout=30)
+    body = resp.read()
+    log.debug("Response status=%d body=%s", resp.status, body[:500])
+
+    result = json.loads(body)
+    result["server_info"] = server_info
+    result["session"] = session
+    result["url"] = f"{SERVER_URL}/s/{session}"
+    return result
+
+
 def _view_impl(path: str) -> str:
-    """Load a file in Buckaroo and return a text summary."""
+    """Load a file in Buckaroo, open browser, and return a text summary."""
     path = os.path.abspath(path)
     log.info("view_data called — path=%s", path)
 
     try:
-        server_info = ensure_server()
-    except Exception:
-        log.error("ensure_server failed:\n%s", traceback.format_exc())
-        raise
-
-    payload = json.dumps(
-        {"session": SESSION_ID, "path": path, "mode": "buckaroo"}
-    ).encode()
-    log.debug("POST %s/load payload=%s", SERVER_URL, payload.decode())
-
-    try:
-        req = Request(
-            f"{SERVER_URL}/load",
-            data=payload,
-            headers={"Content-Type": "application/json"},
-        )
-        resp = urlopen(req, timeout=30)
-        body = resp.read()
-        log.debug("Response status=%d body=%s", resp.status, body[:500])
+        result = _load_in_buckaroo(path)
     except Exception as exc:
         err_body = ""
         if hasattr(exc, "read"):
@@ -265,20 +290,19 @@ def _view_impl(path: str) -> str:
             except Exception:
                 pass
         log.error(
-            "HTTP request to /load failed: %s body=%s\n%s",
+            "view_impl failed: %s body=%s\n%s",
             exc,
             err_body,
             traceback.format_exc(),
         )
         raise
 
-    result = json.loads(body)
-
     rows = result["rows"]
     cols = result["columns"]
     col_lines = "\n".join(f"  - {c['name']} ({c['dtype']})" for c in cols)
 
-    url = f"{SERVER_URL}/s/{SESSION_ID}"
+    url = result["url"]
+    server_info = result["server_info"]
 
     # Open the Buckaroo table in the browser
     import webbrowser
@@ -293,7 +317,7 @@ def _view_impl(path: str) -> str:
         f"Columns:\n{col_lines}\n\n"
         f"Interactive view: {url}\n"
         f"Server: pid={server_pid} ({server_info['server_status']}) | "
-        f"Browser: {browser_action} | Session: {SESSION_ID}"
+        f"Browser: {browser_action} | Session: {result['session']}"
     )
     log.info(
         "view_data success — %d rows, %d cols, browser=%s, server=%s(%s)",
@@ -350,8 +374,43 @@ mcp = FastMCP(
 # ---------------------------------------------------------------------------
 # Tool 1: xorq_run
 # ---------------------------------------------------------------------------
+def _register_in_catalog(build_path, alias=None):
+    """Register a build in the xorq catalog with an optional alias."""
+    from xorq.catalog import (
+        AddBuildRequest,
+        CatalogPaths,
+        do_copy_build_safely,
+        do_ensure_directories,
+        do_save_catalog,
+        get_now_utc,
+        load_catalog,
+        process_catalog_update,
+        validate_build,
+    )
+
+    request = AddBuildRequest(build_path=build_path, alias=alias)
+    paths = CatalogPaths.create()
+    timestamp = get_now_utc().isoformat()
+
+    build_info = validate_build(request)
+    do_ensure_directories(paths)
+    do_copy_build_safely(build_info, paths)
+
+    catalog = load_catalog(path=paths.config_path)
+    updated_catalog, entry_id, revision_id = process_catalog_update(
+        catalog, build_info, request.alias, timestamp
+    )
+    do_save_catalog(updated_catalog, paths.config_path)
+
+    log.info(
+        "Registered build %s as entry=%s rev=%s alias=%s",
+        build_info.build_id, entry_id, revision_id, alias,
+    )
+    return entry_id, revision_id
+
+
 @mcp.tool()
-def xorq_run(script_path: str, expr_name: str = "expr") -> str:
+def xorq_run(script_path: str, expr_name: str = "expr", alias: str = "") -> str:
     """Build, execute, and visualize a xorq expression from a Python script.
 
     Imports the script, extracts the expression variable, builds the DAG,
@@ -360,12 +419,13 @@ def xorq_run(script_path: str, expr_name: str = "expr") -> str:
     Args:
         script_path: Path to a .py or .ipynb file containing a xorq expression.
         expr_name: Name of the expression variable in the script (default: "expr").
+        alias: Optional catalog alias to register this build under.
     """
     from xorq.common.utils.caching_utils import get_xorq_cache_dir
     from xorq.common.utils.import_utils import import_from_path
     from xorq.ibis_yaml.compiler import build_expr, load_expr
 
-    log.info("xorq_run called — script=%s expr_name=%s", script_path, expr_name)
+    log.info("xorq_run called — script=%s expr_name=%s alias=%s", script_path, expr_name, alias)
 
     # 1. Import the script
     script_path = os.path.abspath(script_path)
@@ -398,7 +458,19 @@ def xorq_run(script_path: str, expr_name: str = "expr") -> str:
     build_hash = Path(build_path).name
     log.info("Expression built — hash=%s path=%s", build_hash, build_path)
 
-    # 3. Load the expression back (with cache dir)
+    # 3. Register in catalog
+    catalog_alias = alias or None
+    if not catalog_alias:
+        # Derive alias from script filename (e.g., "simple_example" from "simple_example.py")
+        catalog_alias = Path(script_path).stem
+    try:
+        entry_id, revision_id = _register_in_catalog(build_path, alias=catalog_alias)
+        catalog_msg = f"Catalog: alias={catalog_alias} entry={entry_id} rev={revision_id}"
+    except Exception as exc:
+        log.error("Catalog registration failed: %s\n%s", exc, traceback.format_exc())
+        catalog_msg = f"Catalog registration failed: {exc}"
+
+    # 4. Load the expression back (with cache dir)
     cache_dir = get_xorq_cache_dir()
     try:
         loaded_expr = load_expr(build_path, cache_dir=cache_dir)
@@ -406,7 +478,7 @@ def xorq_run(script_path: str, expr_name: str = "expr") -> str:
         log.error("load_expr failed: %s\n%s", exc, traceback.format_exc())
         return f"Error loading expression: {exc}"
 
-    # 4. Execute to parquet
+    # 5. Execute to parquet
     output_path = RESULTS_DIR / f"{build_hash}.parquet"
     try:
         loaded_expr.to_parquet(str(output_path))
@@ -416,8 +488,9 @@ def xorq_run(script_path: str, expr_name: str = "expr") -> str:
 
     log.info("Expression executed — output=%s", output_path)
 
-    # 5. View in Buckaroo
-    return _view_impl(str(output_path))
+    # 6. View in Buckaroo
+    view_summary = _view_impl(str(output_path))
+    return f"{view_summary}\n{catalog_msg}"
 
 
 # ---------------------------------------------------------------------------
@@ -487,38 +560,229 @@ def view_data(path: str) -> str:
 def xorq_catalog_ls() -> str:
     """List all entries and aliases in the xorq catalog.
 
-    Returns a formatted listing of catalog entries (with entry_id, current revision,
-    and build hash) and aliases (with alias name, entry_id, and revision).
+    Returns a formatted listing and opens an HTML page in the browser with
+    links to Buckaroo detail views for each catalog entry.
     """
-    from xorq.catalog import load_catalog
+    from xorq.catalog import CatalogPaths, load_catalog, resolve_build_dir
+    from xorq.common.utils.caching_utils import get_xorq_cache_dir
+    from xorq.ibis_yaml.compiler import load_expr
 
     log.info("xorq_catalog_ls called")
 
     catalog = load_catalog()
-    lines = []
 
-    if catalog.aliases:
-        lines.append("## Aliases")
-        for name, alias in catalog.aliases.items():
-            lines.append(f"  {name} -> entry={alias.entry_id} rev={alias.revision_id}")
-
-    if catalog.entries:
-        lines.append("\n## Entries")
-        for entry in catalog.entries:
-            curr_rev = entry.current_revision
-            build_id = None
-            for rev in entry.history:
-                if rev.revision_id == curr_rev and rev.build:
-                    build_id = rev.build.build_id
-                    break
-            lines.append(
-                f"  {entry.entry_id}  rev={curr_rev}  build={build_id}"
-            )
-
-    if not lines:
+    if not catalog.entries:
         return "Catalog is empty."
 
+    # Build alias lookup: entry_id -> list of alias names
+    alias_lookup = {}
+    if catalog.aliases:
+        for name, alias in catalog.aliases.items():
+            alias_lookup.setdefault(alias.entry_id, []).append(name)
+
+    # For each entry: execute to parquet, load into Buckaroo with a unique session
+    cache_dir = get_xorq_cache_dir()
+    ensure_server()
+    entry_rows = []
+
+    for entry in catalog.entries:
+        curr_rev = entry.current_revision
+        build_id = None
+        created_at = None
+        for rev in entry.history:
+            if rev.revision_id == curr_rev and rev.build:
+                build_id = rev.build.build_id
+                created_at = str(rev.created_at) if rev.created_at else None
+                break
+
+        aliases = alias_lookup.get(entry.entry_id, [])
+        display_name = aliases[0] if aliases else entry.entry_id[:12]
+        buckaroo_url = None
+        col_names = []
+        row_count = 0
+        error = None
+
+        # Try to resolve, execute, and load into Buckaroo
+        target = aliases[0] if aliases else entry.entry_id
+        build_dir = resolve_build_dir(target, catalog)
+        if build_dir and build_dir.exists():
+            try:
+                expr = load_expr(build_dir, cache_dir=cache_dir)
+                output_path = RESULTS_DIR / f"{build_id}.parquet"
+                expr.to_parquet(str(output_path))
+                result = _load_in_buckaroo(str(output_path), session_id=build_id)
+                buckaroo_url = result["url"]
+                row_count = result["rows"]
+                col_names = [c["name"] for c in result["columns"]]
+            except Exception as exc:
+                log.warning("Failed to load entry %s: %s", entry.entry_id, exc)
+                error = str(exc)
+
+        entry_rows.append({
+            "display_name": display_name,
+            "aliases": aliases,
+            "entry_id": entry.entry_id,
+            "revision": curr_rev,
+            "build_id": build_id,
+            "created_at": created_at,
+            "buckaroo_url": buckaroo_url,
+            "columns": col_names,
+            "rows": row_count,
+            "error": error,
+        })
+
+    # Generate HTML
+    html = _generate_catalog_html(entry_rows)
+    html_path = RESULTS_DIR / "catalog.html"
+    html_path.write_text(html)
+
+    import webbrowser
+    webbrowser.open(f"file://{html_path}")
+    log.info("Opened catalog page: %s", html_path)
+
+    # Also return text summary
+    lines = [f"Opened catalog page with {len(entry_rows)} entries\n"]
+    for row in entry_rows:
+        status = f"({row['rows']} rows, {len(row['columns'])} cols)" if row["buckaroo_url"] else f"(error: {row['error']})"
+        lines.append(f"  {row['display_name']}  {row['revision']}  {status}")
+
     return "\n".join(lines)
+
+
+def _generate_catalog_html(entries: list) -> str:
+    """Generate an HTML catalog page with links to Buckaroo detail views."""
+    cards = []
+    for e in entries:
+        alias_str = ", ".join(e["aliases"]) if e["aliases"] else "—"
+        cols_str = ", ".join(e["columns"][:8])
+        if len(e["columns"]) > 8:
+            cols_str += f", ... (+{len(e['columns']) - 8} more)"
+
+        if e["buckaroo_url"]:
+            link = f'<a href="{e["buckaroo_url"]}" class="view-btn">View in Buckaroo</a>'
+            stats = f'{e["rows"]:,} rows &middot; {len(e["columns"])} columns'
+        else:
+            link = f'<span class="error">Error: {e["error"]}</span>'
+            stats = "—"
+
+        cards.append(f"""
+        <div class="card">
+            <div class="card-header">
+                <h2>{e["display_name"]}</h2>
+                {link}
+            </div>
+            <div class="meta">
+                <span class="badge">{e["revision"]}</span>
+                <span class="stats">{stats}</span>
+            </div>
+            <div class="details">
+                <div><strong>Aliases:</strong> {alias_str}</div>
+                <div><strong>Build:</strong> <code>{e["build_id"]}</code></div>
+                <div><strong>Columns:</strong> {cols_str}</div>
+                <div><strong>Created:</strong> {e["created_at"] or "—"}</div>
+            </div>
+        </div>""")
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>xorq Catalog</title>
+<style>
+  * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+  body {{
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #0f1117;
+    color: #e0e0e0;
+    padding: 2rem;
+  }}
+  h1 {{
+    font-size: 1.8rem;
+    margin-bottom: 0.5rem;
+    color: #fff;
+  }}
+  .subtitle {{
+    color: #888;
+    margin-bottom: 2rem;
+    font-size: 0.95rem;
+  }}
+  .card {{
+    background: #1a1d27;
+    border: 1px solid #2a2d37;
+    border-radius: 8px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    transition: border-color 0.2s;
+  }}
+  .card:hover {{
+    border-color: #4a7dff;
+  }}
+  .card-header {{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+  }}
+  .card-header h2 {{
+    font-size: 1.2rem;
+    color: #fff;
+  }}
+  .view-btn {{
+    background: #4a7dff;
+    color: #fff;
+    text-decoration: none;
+    padding: 0.4rem 1rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: background 0.2s;
+  }}
+  .view-btn:hover {{
+    background: #3a6dee;
+  }}
+  .meta {{
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+  }}
+  .badge {{
+    background: #2a2d37;
+    color: #8ab4f8;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-family: monospace;
+  }}
+  .stats {{
+    color: #999;
+    font-size: 0.85rem;
+  }}
+  .details {{
+    font-size: 0.85rem;
+    color: #aaa;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.35rem 1.5rem;
+  }}
+  .details code {{
+    background: #2a2d37;
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    font-size: 0.8rem;
+  }}
+  .error {{
+    color: #ff6b6b;
+    font-size: 0.85rem;
+  }}
+</style>
+</head>
+<body>
+  <h1>xorq Catalog</h1>
+  <p class="subtitle">{len(entries)} entries</p>
+  {"".join(cards)}
+</body>
+</html>"""
 
 
 # ---------------------------------------------------------------------------
