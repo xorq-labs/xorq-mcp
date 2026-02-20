@@ -165,6 +165,9 @@ docs/source/_static/*woff*
 
 packages/buckaroo-js-core/tsconfig.tsbuildinfo
 
+# Example build artifacts
+examples/builds/
+
 # Large data files - should not be in repo
 *.parq
 *.parquet
