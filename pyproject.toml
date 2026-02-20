@@ -10,11 +10,12 @@ requires-python = ">=3.11"
 dependencies = [
     "xorq>=0.3.8",
     "buckaroo[mcp]>=0.12.8",
+    "tornado>=6.0",
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["."]
-only-include = ["xorq_mcp_tool.py"]
+packages = [".", "xorq_web"]
+only-include = ["xorq_mcp_tool.py", "xorq_web"]
 
 [project.scripts]
 xorq-mcp = "xorq_mcp_tool:main"

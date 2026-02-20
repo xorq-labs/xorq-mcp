@@ -2139,12 +2139,14 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "buckaroo", extra = ["mcp"] },
+    { name = "tornado" },
     { name = "xorq" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "buckaroo", extras = ["mcp"], specifier = ">=0.12.8" },
+    { name = "tornado", specifier = ">=6.0" },
     { name = "xorq", specifier = ">=0.3.8" },
 ]
 

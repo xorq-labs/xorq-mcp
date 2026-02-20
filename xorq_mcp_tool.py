@@ -11,7 +11,6 @@ import sys
 import tempfile
 import time
 import traceback
-import uuid
 from pathlib import Path
 from urllib.error import URLError
 from urllib.request import Request, urlopen
@@ -38,8 +37,10 @@ log = logging.getLogger("xorq.mcp_tool")
 # ---------------------------------------------------------------------------
 SERVER_PORT = int(os.environ.get("XORQ_PORT", "8455"))
 SERVER_URL = f"http://localhost:{SERVER_PORT}"
+WEB_PORT = int(os.environ.get("XORQ_WEB_PORT", str(SERVER_PORT + 1)))
+WEB_URL = f"http://localhost:{WEB_PORT}"
 
-log.info("MCP tool starting — server=%s", SERVER_URL)
+log.info("MCP tool starting — server=%s web=%s", SERVER_URL, WEB_URL)
 
 # ---------------------------------------------------------------------------
 # Results directory for parquet output
@@ -52,6 +53,8 @@ RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 # ---------------------------------------------------------------------------
 _server_proc: subprocess.Popen | None = None
 _server_monitor: subprocess.Popen | None = None
+_web_server_proc: subprocess.Popen | None = None
+_web_server_monitor: subprocess.Popen | None = None
 
 
 def _start_server_monitor(server_pid: int):
@@ -80,28 +83,38 @@ def _start_server_monitor(server_pid: int):
 
 
 def _cleanup_server():
-    """Terminate the data server and monitor if we started them."""
-    global _server_proc, _server_monitor
-    if _server_proc is not None:
-        try:
-            if _server_proc.poll() is None:
-                log.info("Shutting down server (pid=%d)", _server_proc.pid)
-                _server_proc.terminate()
-                try:
-                    _server_proc.wait(timeout=3)
-                except subprocess.TimeoutExpired:
-                    log.warning("Server didn't stop after SIGTERM, sending SIGKILL")
-                    _server_proc.kill()
-        except OSError as exc:
-            log.debug("Cleanup error (harmless): %s", exc)
-        _server_proc = None
-    if _server_monitor is not None:
-        try:
-            _server_monitor.terminate()
-            _server_monitor.wait(timeout=2)
-        except (OSError, subprocess.TimeoutExpired):
-            pass
-        _server_monitor = None
+    """Terminate the data server, web server, and their monitors."""
+    global _server_proc, _server_monitor, _web_server_proc, _web_server_monitor
+    for label, proc_attr, monitor_attr in [
+        ("buckaroo", "_server_proc", "_server_monitor"),
+        ("web", "_web_server_proc", "_web_server_monitor"),
+    ]:
+        proc = globals()[proc_attr]
+        monitor = globals()[monitor_attr]
+        if proc is not None:
+            try:
+                if proc.poll() is None:
+                    log.info("Shutting down %s server (pid=%d)", label, proc.pid)
+                    proc.terminate()
+                    try:
+                        proc.wait(timeout=3)
+                    except subprocess.TimeoutExpired:
+                        log.warning("%s server didn't stop after SIGTERM, sending SIGKILL", label)
+                        proc.kill()
+            except OSError as exc:
+                log.debug("Cleanup error (harmless): %s", exc)
+            globals()[proc_attr] = None
+        if monitor is not None:
+            try:
+                monitor.terminate()
+                monitor.wait(timeout=2)
+            except (OSError, subprocess.TimeoutExpired):
+                pass
+            globals()[monitor_attr] = None
+    _server_proc = None
+    _server_monitor = None
+    _web_server_proc = None
+    _web_server_monitor = None
 
 
 atexit.register(_cleanup_server)
@@ -226,6 +239,57 @@ def ensure_server() -> dict:
 
     log.error("Server failed to start within 5s — see %s", server_log)
     raise RuntimeError(_format_startup_failure())
+
+
+def _web_health_check() -> dict | None:
+    try:
+        resp = urlopen(f"{WEB_URL}/health", timeout=2)
+        if resp.status == 200:
+            data = json.loads(resp.read())
+            log.debug("Web health check OK: %s", data)
+            return data
+    except (URLError, OSError) as exc:
+        log.debug("Web health check failed: %s", exc)
+    return None
+
+
+def ensure_web_server() -> dict:
+    """Start the xorq web server if it isn't already running."""
+    health = _web_health_check()
+    if health:
+        log.info("Web server already running — pid=%s", health.get("pid"))
+        return {"web_status": "reused", "web_pid": health.get("pid")}
+
+    global _web_server_proc
+    cmd = [
+        sys.executable, "-m", "xorq_web",
+        "--port", str(WEB_PORT),
+        "--buckaroo-port", str(SERVER_PORT),
+    ]
+    log.info("Starting web server: %s", " ".join(cmd))
+
+    web_log = os.path.join(LOG_DIR, "web_server.log")
+    web_log_fh = open(web_log, "a")
+    _web_server_proc = subprocess.Popen(cmd, stdout=web_log_fh, stderr=web_log_fh)
+    _start_server_monitor(_web_server_proc.pid)
+
+    for i in range(20):
+        time.sleep(0.25)
+        health = _web_health_check()
+        if health:
+            log.info(
+                "Web server ready after %.1fs — pid=%s",
+                (i + 1) * 0.25,
+                health.get("pid"),
+            )
+            return {"web_status": "started", "web_pid": health.get("pid")}
+
+    log.error("Web server failed to start within 5s — see %s", web_log)
+    raise RuntimeError(
+        f"xorq web server failed to start.\n"
+        f"Check log: {web_log}\n"
+        f"Try manually: {' '.join(cmd)}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -488,9 +552,31 @@ def xorq_run(script_path: str, expr_name: str = "expr", alias: str = "") -> str:
 
     log.info("Expression executed — output=%s", output_path)
 
-    # 6. View in Buckaroo
-    view_summary = _view_impl(str(output_path))
-    return f"{view_summary}\n{catalog_msg}"
+    # 6. Open in xorq web UI
+    import webbrowser
+
+    ensure_server()
+    ensure_web_server()
+    web_url = f"{WEB_URL}/entry/{catalog_alias}"
+    webbrowser.open(web_url)
+    log.info("Opened web UI: %s", web_url)
+
+    # Return a text summary
+    try:
+        result = _load_in_buckaroo(str(output_path))
+        rows = result["rows"]
+        cols = result["columns"]
+        col_lines = "\n".join(f"  - {c['name']} ({c['dtype']})" for c in cols)
+        summary = (
+            f"Loaded **{catalog_alias}** — "
+            f"{rows:,} rows, {len(cols)} columns\n\n"
+            f"Columns:\n{col_lines}\n\n"
+            f"Web UI: {web_url}\n"
+        )
+    except Exception:
+        summary = f"Expression executed — output at {output_path}\nWeb UI: {web_url}\n"
+
+    return f"{summary}\n{catalog_msg}"
 
 
 # ---------------------------------------------------------------------------
@@ -537,7 +623,32 @@ def xorq_view_build(target: str) -> str:
         return f"Error executing expression: {exc}"
 
     log.info("Build executed — output=%s", output_path)
-    return _view_impl(str(output_path))
+
+    # Open in xorq web UI
+    import webbrowser
+
+    ensure_server()
+    ensure_web_server()
+    web_url = f"{WEB_URL}/entry/{target}"
+    webbrowser.open(web_url)
+    log.info("Opened web UI: %s", web_url)
+
+    # Return text summary
+    try:
+        result = _load_in_buckaroo(str(output_path))
+        rows = result["rows"]
+        cols = result["columns"]
+        col_lines = "\n".join(f"  - {c['name']} ({c['dtype']})" for c in cols)
+        summary = (
+            f"Loaded **{target}** — "
+            f"{rows:,} rows, {len(cols)} columns\n\n"
+            f"Columns:\n{col_lines}\n\n"
+            f"Web UI: {web_url}"
+        )
+    except Exception:
+        summary = f"Expression executed — output at {output_path}\nWeb UI: {web_url}"
+
+    return summary
 
 
 # ---------------------------------------------------------------------------
@@ -563,9 +674,7 @@ def xorq_catalog_ls() -> str:
     Returns a formatted listing and opens an HTML page in the browser with
     links to Buckaroo detail views for each catalog entry.
     """
-    from xorq.catalog import CatalogPaths, load_catalog, resolve_build_dir
-    from xorq.common.utils.caching_utils import get_xorq_cache_dir
-    from xorq.ibis_yaml.compiler import load_expr
+    from xorq.catalog import load_catalog
 
     log.info("xorq_catalog_ls called")
 
@@ -575,16 +684,12 @@ def xorq_catalog_ls() -> str:
         return "Catalog is empty."
 
     # Build alias lookup: entry_id -> list of alias names
-    alias_lookup = {}
+    alias_lookup: dict[str, list[str]] = {}
     if catalog.aliases:
         for name, alias in catalog.aliases.items():
             alias_lookup.setdefault(alias.entry_id, []).append(name)
 
-    # For each entry: execute to parquet, load into Buckaroo with a unique session
-    cache_dir = get_xorq_cache_dir()
-    ensure_server()
     entry_rows = []
-
     for entry in catalog.entries:
         curr_rev = entry.current_revision
         build_id = None
@@ -597,27 +702,6 @@ def xorq_catalog_ls() -> str:
 
         aliases = alias_lookup.get(entry.entry_id, [])
         display_name = aliases[0] if aliases else entry.entry_id[:12]
-        buckaroo_url = None
-        col_names = []
-        row_count = 0
-        error = None
-
-        # Try to resolve, execute, and load into Buckaroo
-        target = aliases[0] if aliases else entry.entry_id
-        build_dir = resolve_build_dir(target, catalog)
-        if build_dir and build_dir.exists():
-            try:
-                expr = load_expr(build_dir, cache_dir=cache_dir)
-                output_path = RESULTS_DIR / f"{build_id}.parquet"
-                expr.to_parquet(str(output_path))
-                result = _load_in_buckaroo(str(output_path), session_id=build_id)
-                buckaroo_url = result["url"]
-                row_count = result["rows"]
-                col_names = [c["name"] for c in result["columns"]]
-            except Exception as exc:
-                log.warning("Failed to load entry %s: %s", entry.entry_id, exc)
-                error = str(exc)
-
         entry_rows.append({
             "display_name": display_name,
             "aliases": aliases,
@@ -625,164 +709,23 @@ def xorq_catalog_ls() -> str:
             "revision": curr_rev,
             "build_id": build_id,
             "created_at": created_at,
-            "buckaroo_url": buckaroo_url,
-            "columns": col_names,
-            "rows": row_count,
-            "error": error,
         })
 
-    # Generate HTML
-    html = _generate_catalog_html(entry_rows)
-    html_path = RESULTS_DIR / "catalog.html"
-    html_path.write_text(html)
-
+    # Open the xorq web catalog page
     import webbrowser
-    webbrowser.open(f"file://{html_path}")
-    log.info("Opened catalog page: %s", html_path)
 
-    # Also return text summary
+    ensure_server()
+    ensure_web_server()
+    web_url = f"{WEB_URL}/"
+    webbrowser.open(web_url)
+    log.info("Opened catalog page: %s", web_url)
+
+    # Return text summary
     lines = [f"Opened catalog page with {len(entry_rows)} entries\n"]
     for row in entry_rows:
-        status = f"({row['rows']} rows, {len(row['columns'])} cols)" if row["buckaroo_url"] else f"(error: {row['error']})"
-        lines.append(f"  {row['display_name']}  {row['revision']}  {status}")
+        lines.append(f"  {row['display_name']}  {row['revision']}  build={row['build_id']}")
 
     return "\n".join(lines)
-
-
-def _generate_catalog_html(entries: list) -> str:
-    """Generate an HTML catalog page with links to Buckaroo detail views."""
-    cards = []
-    for e in entries:
-        alias_str = ", ".join(e["aliases"]) if e["aliases"] else "—"
-        cols_str = ", ".join(e["columns"][:8])
-        if len(e["columns"]) > 8:
-            cols_str += f", ... (+{len(e['columns']) - 8} more)"
-
-        if e["buckaroo_url"]:
-            link = f'<a href="{e["buckaroo_url"]}" class="view-btn">View in Buckaroo</a>'
-            stats = f'{e["rows"]:,} rows &middot; {len(e["columns"])} columns'
-        else:
-            link = f'<span class="error">Error: {e["error"]}</span>'
-            stats = "—"
-
-        cards.append(f"""
-        <div class="card">
-            <div class="card-header">
-                <h2>{e["display_name"]}</h2>
-                {link}
-            </div>
-            <div class="meta">
-                <span class="badge">{e["revision"]}</span>
-                <span class="stats">{stats}</span>
-            </div>
-            <div class="details">
-                <div><strong>Aliases:</strong> {alias_str}</div>
-                <div><strong>Build:</strong> <code>{e["build_id"]}</code></div>
-                <div><strong>Columns:</strong> {cols_str}</div>
-                <div><strong>Created:</strong> {e["created_at"] or "—"}</div>
-            </div>
-        </div>""")
-
-    return f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<title>xorq Catalog</title>
-<style>
-  * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-  body {{
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: #0f1117;
-    color: #e0e0e0;
-    padding: 2rem;
-  }}
-  h1 {{
-    font-size: 1.8rem;
-    margin-bottom: 0.5rem;
-    color: #fff;
-  }}
-  .subtitle {{
-    color: #888;
-    margin-bottom: 2rem;
-    font-size: 0.95rem;
-  }}
-  .card {{
-    background: #1a1d27;
-    border: 1px solid #2a2d37;
-    border-radius: 8px;
-    padding: 1.25rem;
-    margin-bottom: 1rem;
-    transition: border-color 0.2s;
-  }}
-  .card:hover {{
-    border-color: #4a7dff;
-  }}
-  .card-header {{
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.75rem;
-  }}
-  .card-header h2 {{
-    font-size: 1.2rem;
-    color: #fff;
-  }}
-  .view-btn {{
-    background: #4a7dff;
-    color: #fff;
-    text-decoration: none;
-    padding: 0.4rem 1rem;
-    border-radius: 6px;
-    font-size: 0.85rem;
-    font-weight: 500;
-    transition: background 0.2s;
-  }}
-  .view-btn:hover {{
-    background: #3a6dee;
-  }}
-  .meta {{
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin-bottom: 0.75rem;
-  }}
-  .badge {{
-    background: #2a2d37;
-    color: #8ab4f8;
-    padding: 0.15rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    font-family: monospace;
-  }}
-  .stats {{
-    color: #999;
-    font-size: 0.85rem;
-  }}
-  .details {{
-    font-size: 0.85rem;
-    color: #aaa;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.35rem 1.5rem;
-  }}
-  .details code {{
-    background: #2a2d37;
-    padding: 0.1rem 0.35rem;
-    border-radius: 3px;
-    font-size: 0.8rem;
-  }}
-  .error {{
-    color: #ff6b6b;
-    font-size: 0.85rem;
-  }}
-</style>
-</head>
-<body>
-  <h1>xorq Catalog</h1>
-  <p class="subtitle">{len(entries)} entries</p>
-  {"".join(cards)}
-</body>
-</html>"""
 
 
 # ---------------------------------------------------------------------------
