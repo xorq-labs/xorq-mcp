@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}xorq Catalog{% end %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Catalog</h1>
+  <p class="stats" style="margin-top:0.25rem;">{{ len(entries) }} entries</p>
+</div>
+
+{% if not entries %}
+<div class="empty-state">
+  <h2>No catalog entries</h2>
+  <p>Run <code>xorq_run</code> on a script to add entries.</p>
+</div>
+{% else %}
+<div class="card-grid">
+  {% for e in entries %}
+  <div class="card">
+    <div class="card-header">
+      <h2><a href="/entry/{{ e['display_name'] }}">{{ e["display_name"] }}</a></h2>
+      <a href="/entry/{{ e['display_name'] }}" class="view-btn">View</a>
+    </div>
+    <div class="meta">
+      <span class="badge">{{ e["revision"] or "—" }}</span>
+      {% if e.get("col_count") %}
+      <span class="stats">{{ e["col_count"] }} columns</span>
+      {% end %}
+    </div>
+    <div class="details">
+      <div><strong>Build:</strong> <code>{{ (e["build_id"] or "—")[:12] }}</code></div>
+      <div><strong>Created:</strong> {{ e["created_at"] or "—" }}</div>
+      {% if e["aliases"] %}
+      <div><strong>Aliases:</strong> {{ ", ".join(e["aliases"]) }}</div>
+      {% end %}
+    </div>
+  </div>
+  {% end %}
+</div>
+{% end %}
+{% end %}

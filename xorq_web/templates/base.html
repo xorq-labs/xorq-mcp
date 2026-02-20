@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}xorq{% end %}</title>
+<link rel="stylesheet" href="{{ static_url('xorq.css') }}">
+{% block head %}{% end %}
+</head>
+<body>
+  <nav class="sidebar">
+    <div class="sidebar-header">
+      <h1>xorq</h1>
+      <div class="subtitle">Expression Catalog</div>
+    </div>
+    <ul class="nav-list">
+      {% for entry in nav_entries %}
+      <li>
+        <a href="/entry/{{ entry['display_name'] }}"
+           class="{{ 'active' if current_entry == entry['display_name'] else '' }}">
+          {{ entry["display_name"] }}
+          <span class="nav-meta">{{ entry["revision"] or "" }}</span>
+        </a>
+      </li>
+      {% end %}
+    </ul>
+  </nav>
+  <div class="main">
+    {% block content %}{% end %}
+  </div>
+{% block scripts %}{% end %}
+</body>
+</html>

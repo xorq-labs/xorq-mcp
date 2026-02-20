@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}{{ display_name }} — xorq{% end %}
+
+{% block content %}
+<div class="page-header">
+  <h1>{{ display_name }} <span class="badge">{{ revision or "" }}</span></h1>
+</div>
+
+<!-- Metadata grid -->
+<div class="metadata-grid">
+  <div class="metadata-item">
+    <div class="label">Build ID</div>
+    <div class="value">{{ build_id or "—" }}</div>
+  </div>
+  <div class="metadata-item">
+    <div class="label">Created</div>
+    <div class="value">{{ created_at or "—" }}</div>
+  </div>
+  {% if metadata.get("current_library_version") %}
+  <div class="metadata-item">
+    <div class="label">xorq Version</div>
+    <div class="value">{{ metadata["current_library_version"] }}</div>
+  </div>
+  {% end %}
+  {% if metadata.get("git_state", {}).get("commit") %}
+  <div class="metadata-item">
+    <div class="label">Git Commit</div>
+    <div class="value">{{ metadata["git_state"]["commit"][:12] }}</div>
+  </div>
+  {% end %}
+  {% if metadata.get("sys-version_info") %}
+  <div class="metadata-item">
+    <div class="label">Python Version</div>
+    <div class="value">{{ ".".join(str(v) for v in metadata["sys-version_info"][:3]) }}</div>
+  </div>
+  {% end %}
+</div>
+
+<!-- Schema -->
+{% if schema %}
+<h2 class="section-title">Schema</h2>
+<table class="schema-table">
+  <thead>
+    <tr><th>Column</th><th>Type</th></tr>
+  </thead>
+  <tbody>
+    {% for col_name, col_type in schema %}
+    <tr><td>{{ col_name }}</td><td>{{ col_type }}</td></tr>
+    {% end %}
+  </tbody>
+</table>
+{% end %}
+
+<!-- Buckaroo iframe -->
+{% if buckaroo_session %}
+<h2 class="section-title">Data Preview</h2>
+<div class="iframe-container">
+  <iframe src="http://localhost:{{ buckaroo_port }}/s/{{ buckaroo_session }}"></iframe>
+</div>
+{% end %}
+
+<!-- Lineage -->
+{% if lineage %}
+<h2 class="section-title">Column Lineage</h2>
+<div class="lineage-section">
+  {% for col_name, tree_html in lineage.items() %}
+  <div class="lineage-column">
+    <button class="lineage-toggle" onclick="toggleLineage(this)">
+      <span class="arrow">&#9654;</span> {{ col_name }}
+    </button>
+    <div class="lineage-tree">
+      <ul>
+        {% raw tree_html %}
+      </ul>
+    </div>
+  </div>
+  {% end %}
+</div>
+{% end %}
+{% end %}
+
+{% block scripts %}
+<script>
+function toggleLineage(btn) {
+  btn.classList.toggle('open');
+  var tree = btn.nextElementSibling;
+  tree.classList.toggle('open');
+}
+</script>
+{% end %}
