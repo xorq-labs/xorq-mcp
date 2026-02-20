@@ -43,7 +43,24 @@
 </div>
 {% end %}
 
+<!-- Execute time -->
+{% if revision_metadata and revision_metadata.get("execute_seconds") is not None %}
+<div class="execute-time">
+  <span class="execute-time-label">Execute Time</span>
+  <span class="execute-time-value">{{ revision_metadata["execute_seconds"] }}s</span>
+</div>
+{% end %}
+
+<!-- Buckaroo iframe -->
+{% if buckaroo_session %}
+<h2 class="section-title">Data Preview</h2>
+<div class="iframe-container">
+  <iframe src="http://localhost:{{ buckaroo_port }}/s/{{ buckaroo_session }}"></iframe>
+</div>
+{% end %}
+
 <!-- Metadata grid -->
+<h2 class="section-title">Build Metadata</h2>
 <div class="metadata-grid">
   <div class="metadata-item">
     <div class="label">Build ID</div>
@@ -71,36 +88,7 @@
     <div class="value">{{ ".".join(str(v) for v in metadata["sys-version_info"][:3]) }}</div>
   </div>
   {% end %}
-  {% if revision_metadata and revision_metadata.get("execute_seconds") is not None %}
-  <div class="metadata-item">
-    <div class="label">Execute Time</div>
-    <div class="value">{{ revision_metadata["execute_seconds"] }}s</div>
-  </div>
-  {% end %}
 </div>
-
-<!-- Schema -->
-{% if schema %}
-<h2 class="section-title">Schema</h2>
-<table class="schema-table">
-  <thead>
-    <tr><th>Column</th><th>Type</th></tr>
-  </thead>
-  <tbody>
-    {% for col_name, col_type in schema %}
-    <tr><td>{{ col_name }}</td><td>{{ col_type }}</td></tr>
-    {% end %}
-  </tbody>
-</table>
-{% end %}
-
-<!-- Buckaroo iframe -->
-{% if buckaroo_session %}
-<h2 class="section-title">Data Preview</h2>
-<div class="iframe-container">
-  <iframe src="http://localhost:{{ buckaroo_port }}/s/{{ buckaroo_session }}"></iframe>
-</div>
-{% end %}
 
 <!-- Lineage -->
 {% if lineage %}

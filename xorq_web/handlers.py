@@ -14,7 +14,6 @@ from xorq_web.metadata import (
     get_catalog_entries,
     get_entry_revisions,
     load_build_metadata,
-    load_build_schema,
     load_lineage_html,
 )
 
@@ -100,7 +99,6 @@ class ExpressionDetailHandler(tornado.web.RequestHandler):
 
         # Load metadata
         metadata = load_build_metadata(build_dir)
-        schema = load_build_schema(build_dir)
 
         # Execute to parquet and load into Buckaroo
         buckaroo_session = None
@@ -132,7 +130,6 @@ class ExpressionDetailHandler(tornado.web.RequestHandler):
             build_id=build_id,
             created_at=created_at,
             metadata=metadata,
-            schema=schema,
             buckaroo_port=buckaroo_port,
             buckaroo_session=buckaroo_session,
             lineage=lineage,

@@ -299,6 +299,30 @@ body {
   white-space: pre-wrap;
 }
 
+/* --- Execute time --- */
+.execute-time {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.85rem;
+}
+
+.execute-time-label {
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+}
+
+.execute-time-value {
+  font-family: monospace;
+  color: #fff;
+  background: var(--badge-bg);
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+}
+
 /* --- Metadata grid --- */
 .metadata-grid {
   display: grid;

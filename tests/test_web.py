@@ -478,7 +478,6 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
         assert resp.code == 404
 
     @patch("xorq_web.handlers.load_lineage_html", return_value={})
-    @patch("xorq_web.handlers.load_build_schema", return_value=[("id", "int64")])
     @patch("xorq_web.handlers.load_build_metadata", return_value={"current_library_version": "0.3.7"})
     @patch("xorq_web.handlers.ensure_buckaroo_session", return_value={"session": "abc"})
     @patch("xorq_web.handlers.get_entry_revisions", return_value=[])
@@ -499,7 +498,6 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
         mock_revisions,
         mock_bk_session,
         mock_meta,
-        mock_schema,
         mock_lineage,
     ):
         import tempfile
@@ -537,10 +535,8 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
             assert "my_expr" in body
             assert "abc123" in body
             assert "0.3.7" in body
-            assert "int64" in body
 
     @patch("xorq_web.handlers.load_lineage_html", return_value={})
-    @patch("xorq_web.handlers.load_build_schema", return_value=[])
     @patch("xorq_web.handlers.load_build_metadata", return_value={})
     @patch("xorq_web.handlers.ensure_buckaroo_session", return_value={"session": "s1"})
     @patch("xorq_web.handlers.get_entry_revisions")
@@ -561,7 +557,6 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
         mock_revisions,
         mock_bk_session,
         mock_meta,
-        mock_schema,
         mock_lineage,
     ):
         import tempfile
@@ -617,7 +612,7 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
             assert "/entry/my_expr@r3" in body
 
     @patch("xorq_web.handlers.load_lineage_html", return_value={})
-    @patch("xorq_web.handlers.load_build_schema", return_value=[])
+
     @patch("xorq_web.handlers.load_build_metadata", return_value={})
     @patch("xorq_web.handlers.ensure_buckaroo_session", return_value={"session": "s1"})
     @patch("xorq_web.handlers.get_entry_revisions")
@@ -638,7 +633,7 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
         mock_revisions,
         mock_bk_session,
         mock_meta,
-        mock_schema,
+
         mock_lineage,
     ):
         import tempfile
@@ -680,7 +675,7 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
             assert "revision-nav" not in body
 
     @patch("xorq_web.handlers.load_lineage_html", return_value={})
-    @patch("xorq_web.handlers.load_build_schema", return_value=[])
+
     @patch("xorq_web.handlers.load_build_metadata", return_value={})
     @patch("xorq_web.handlers.ensure_buckaroo_session", return_value={"session": "s1"})
     @patch("xorq_web.handlers.get_entry_revisions", return_value=[])
@@ -701,7 +696,7 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
         mock_revisions,
         mock_bk_session,
         mock_meta,
-        mock_schema,
+
         mock_lineage,
     ):
         import tempfile
@@ -745,7 +740,7 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
             assert "expand the number of rows to 20" in body
 
     @patch("xorq_web.handlers.load_lineage_html", return_value={})
-    @patch("xorq_web.handlers.load_build_schema", return_value=[])
+
     @patch("xorq_web.handlers.load_build_metadata", return_value={})
     @patch("xorq_web.handlers.ensure_buckaroo_session", return_value={"session": "s1"})
     @patch("xorq_web.handlers.get_entry_revisions", return_value=[])
@@ -766,7 +761,7 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
         mock_revisions,
         mock_bk_session,
         mock_meta,
-        mock_schema,
+
         mock_lineage,
     ):
         import tempfile
