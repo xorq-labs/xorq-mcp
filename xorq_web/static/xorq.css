@@ -274,6 +274,31 @@ body {
   border-color: var(--accent);
 }
 
+/* --- Prompt block --- */
+.prompt-block {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.prompt-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 0.35rem;
+}
+
+.prompt-text {
+  font-size: 0.9rem;
+  color: var(--text);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
 /* --- Metadata grid --- */
 .metadata-grid {
   display: grid;

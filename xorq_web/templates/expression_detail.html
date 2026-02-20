@@ -35,6 +35,14 @@
 </div>
 {% end %}
 
+<!-- Prompt -->
+{% if revision_metadata and revision_metadata.get("prompt") %}
+<div class="prompt-block">
+  <div class="prompt-label">Prompt</div>
+  <div class="prompt-text">{{ revision_metadata["prompt"] }}</div>
+</div>
+{% end %}
+
 <!-- Metadata grid -->
 <div class="metadata-grid">
   <div class="metadata-item">

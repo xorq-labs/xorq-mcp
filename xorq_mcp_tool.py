@@ -438,8 +438,14 @@ mcp = FastMCP(
 # ---------------------------------------------------------------------------
 # Tool 1: xorq_run
 # ---------------------------------------------------------------------------
-def _register_in_catalog(build_path, alias=None):
-    """Register a build in the xorq catalog with an optional alias."""
+def _register_in_catalog(build_path, alias=None, metadata=None):
+    """Register a build in the xorq catalog with an optional alias.
+
+    Args:
+        build_path: Path to the build directory.
+        alias: Optional catalog alias.
+        metadata: Optional dict to store on the revision (e.g. {"prompt": "..."}).
+    """
     from xorq.catalog import (
         AddBuildRequest,
         CatalogPaths,
@@ -464,17 +470,39 @@ def _register_in_catalog(build_path, alias=None):
     updated_catalog, entry_id, revision_id = process_catalog_update(
         catalog, build_info, request.alias, timestamp
     )
+
+    # Workaround: upstream make_revision() doesn't accept metadata yet
+    # (see https://github.com/xorq-labs/xorq/issues/1598).
+    # We evolve the revision after the fact and re-save.
+    if metadata:
+        entry = updated_catalog.maybe_get_entry(entry_id)
+        if entry:
+            rev = entry.maybe_get_revision(revision_id)
+            if rev:
+                updated_rev = rev.evolve(metadata=metadata)
+                updated_history = tuple(
+                    updated_rev if r.revision_id == revision_id else r
+                    for r in entry.history
+                )
+                updated_entry = entry.evolve(history=updated_history)
+                updated_entries = tuple(
+                    updated_entry if e.entry_id == entry_id else e
+                    for e in updated_catalog.entries
+                )
+                updated_catalog = updated_catalog.evolve(entries=updated_entries)
+
     do_save_catalog(updated_catalog, paths.config_path)
 
     log.info(
-        "Registered build %s as entry=%s rev=%s alias=%s",
+        "Registered build %s as entry=%s rev=%s alias=%s metadata=%s",
         build_info.build_id, entry_id, revision_id, alias,
+        list(metadata.keys()) if metadata else None,
     )
     return entry_id, revision_id
 
 
 @mcp.tool()
-def xorq_run(script_path: str, expr_name: str = "expr", alias: str = "") -> str:
+def xorq_run(script_path: str, expr_name: str = "expr", alias: str = "", prompt: str = "") -> str:
     """Build, execute, and visualize a xorq expression from a Python script.
 
     Imports the script, extracts the expression variable, builds the DAG,
@@ -484,6 +512,7 @@ def xorq_run(script_path: str, expr_name: str = "expr", alias: str = "") -> str:
         script_path: Path to a .py or .ipynb file containing a xorq expression.
         expr_name: Name of the expression variable in the script (default: "expr").
         alias: Optional catalog alias to register this build under.
+        prompt: Optional prompt/description that produced this expression (stored as revision metadata).
     """
     from xorq.common.utils.caching_utils import get_xorq_cache_dir
     from xorq.common.utils.import_utils import import_from_path
@@ -527,8 +556,11 @@ def xorq_run(script_path: str, expr_name: str = "expr", alias: str = "") -> str:
     if not catalog_alias:
         # Derive alias from script filename (e.g., "simple_example" from "simple_example.py")
         catalog_alias = Path(script_path).stem
+    revision_metadata = {"prompt": prompt} if prompt else None
     try:
-        entry_id, revision_id = _register_in_catalog(build_path, alias=catalog_alias)
+        entry_id, revision_id = _register_in_catalog(
+            build_path, alias=catalog_alias, metadata=revision_metadata
+        )
         catalog_msg = f"Catalog: alias={catalog_alias} entry={entry_id} rev={revision_id}"
     except Exception as exc:
         log.error("Catalog registration failed: %s\n%s", exc, traceback.format_exc())

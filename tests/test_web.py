@@ -574,6 +574,130 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
             # Should NOT render the revision nav bar for a single revision
             assert "revision-nav" not in body
 
+    @patch("xorq_web.handlers.load_lineage_html", return_value={})
+    @patch("xorq_web.handlers.load_build_schema", return_value=[])
+    @patch("xorq_web.handlers.load_build_metadata", return_value={})
+    @patch("xorq_web.handlers.ensure_buckaroo_session", return_value={"session": "s1"})
+    @patch("xorq_web.handlers.get_entry_revisions", return_value=[])
+    @patch("xorq_web.handlers.get_catalog_entries")
+    @patch("xorq.catalog.resolve_build_dir")
+    @patch("xorq.catalog.load_catalog")
+    @patch("xorq.catalog.Target.from_str")
+    @patch("xorq.ibis_yaml.compiler.load_expr")
+    @patch("xorq.common.utils.caching_utils.get_xorq_cache_dir", return_value="/tmp/cache")
+    def test_prompt_metadata_displayed(
+        self,
+        mock_cache,
+        mock_load_expr,
+        mock_target_from_str,
+        mock_cat,
+        mock_resolve,
+        mock_entries,
+        mock_revisions,
+        mock_bk_session,
+        mock_meta,
+        mock_schema,
+        mock_lineage,
+    ):
+        import tempfile
+
+        mock_resolved = MagicMock()
+        mock_resolved.entry_id = "uuid-1"
+        mock_resolved.rev = "r2"
+        mock_target_from_str.return_value = mock_resolved
+
+        mock_rev_obj = MagicMock()
+        mock_rev_obj.created_at = "2025-06-01"
+        mock_rev_obj.build = MagicMock()
+        mock_rev_obj.build.build_id = "build-r2"
+        mock_rev_obj.metadata = {"prompt": "expand the number of rows to 20"}
+        mock_entry = MagicMock()
+        mock_entry.entry_id = "uuid-1"
+        mock_entry.maybe_get_revision.return_value = mock_rev_obj
+        mock_cat.return_value.maybe_get_entry.return_value = mock_entry
+
+        mock_entries.return_value = [
+            {
+                "display_name": "my_expr",
+                "aliases": ["my_expr"],
+                "entry_id": "uuid-1",
+                "revision": "r2",
+                "build_id": "build-r2",
+                "created_at": "2025-06-01",
+            },
+        ]
+
+        with tempfile.TemporaryDirectory() as td:
+            build_dir = Path(td) / "build-r2"
+            build_dir.mkdir()
+            mock_resolve.return_value = build_dir
+            mock_load_expr.return_value = MagicMock()
+
+            resp = self.fetch("/entry/my_expr@r2")
+            assert resp.code == 200
+            body = resp.body.decode()
+            assert "prompt-block" in body
+            assert "expand the number of rows to 20" in body
+
+    @patch("xorq_web.handlers.load_lineage_html", return_value={})
+    @patch("xorq_web.handlers.load_build_schema", return_value=[])
+    @patch("xorq_web.handlers.load_build_metadata", return_value={})
+    @patch("xorq_web.handlers.ensure_buckaroo_session", return_value={"session": "s1"})
+    @patch("xorq_web.handlers.get_entry_revisions", return_value=[])
+    @patch("xorq_web.handlers.get_catalog_entries")
+    @patch("xorq.catalog.resolve_build_dir")
+    @patch("xorq.catalog.load_catalog")
+    @patch("xorq.catalog.Target.from_str")
+    @patch("xorq.ibis_yaml.compiler.load_expr")
+    @patch("xorq.common.utils.caching_utils.get_xorq_cache_dir", return_value="/tmp/cache")
+    def test_no_prompt_block_when_no_metadata(
+        self,
+        mock_cache,
+        mock_load_expr,
+        mock_target_from_str,
+        mock_cat,
+        mock_resolve,
+        mock_entries,
+        mock_revisions,
+        mock_bk_session,
+        mock_meta,
+        mock_schema,
+        mock_lineage,
+    ):
+        import tempfile
+
+        mock_resolved = MagicMock()
+        mock_resolved.entry_id = "uuid-1"
+        mock_resolved.rev = "r1"
+        mock_target_from_str.return_value = mock_resolved
+
+        mock_entry = MagicMock()
+        mock_entry.entry_id = "uuid-1"
+        mock_entry.maybe_get_revision.return_value = None
+        mock_cat.return_value.maybe_get_entry.return_value = mock_entry
+
+        mock_entries.return_value = [
+            {
+                "display_name": "my_expr",
+                "aliases": ["my_expr"],
+                "entry_id": "uuid-1",
+                "revision": "r1",
+                "build_id": "build-1",
+                "created_at": "2025-01-01",
+            },
+        ]
+
+        with tempfile.TemporaryDirectory() as td:
+            build_dir = Path(td) / "build-1"
+            build_dir.mkdir()
+            mock_resolve.return_value = build_dir
+            mock_load_expr.return_value = MagicMock()
+
+            resp = self.fetch("/entry/my_expr")
+            assert resp.code == 200
+            body = resp.body.decode()
+            assert "prompt-block" not in body
+
 
 # -----------------------------------------------------------------------
 # xorq_mcp_tool.py — web server management

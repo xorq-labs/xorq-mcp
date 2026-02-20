@@ -67,7 +67,8 @@ class ExpressionDetailHandler(tornado.web.RequestHandler):
                 build_id = e["build_id"] or build_dir.name
                 break
 
-        # Look up created_at from the specific revision
+        # Look up created_at and metadata from the specific revision
+        revision_metadata = None
         if resolved:
             entry = catalog.maybe_get_entry(resolved.entry_id)
             if entry:
@@ -76,6 +77,7 @@ class ExpressionDetailHandler(tornado.web.RequestHandler):
                     created_at = str(rev_obj.created_at) if rev_obj.created_at else None
                     if rev_obj.build:
                         build_id = rev_obj.build.build_id
+                    revision_metadata = rev_obj.metadata
 
         # Compute revision navigation
         revisions = get_entry_revisions(target)
@@ -139,6 +141,7 @@ class ExpressionDetailHandler(tornado.web.RequestHandler):
             next_url=next_url,
             prev_rev_id=prev_rev_id,
             next_rev_id=next_rev_id,
+            revision_metadata=revision_metadata,
         )
 
 
