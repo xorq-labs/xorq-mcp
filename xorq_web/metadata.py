@@ -82,7 +82,7 @@ def ensure_buckaroo_session(parquet_path: str, session_id: str, buckaroo_port: i
     import os
 
     payload = json.dumps(
-        {"session": session_id, "path": os.path.abspath(parquet_path), "mode": "buckaroo"}
+        {"session": session_id, "path": os.path.abspath(parquet_path), "mode": "lazy"}
     ).encode()
 
     req = Request(

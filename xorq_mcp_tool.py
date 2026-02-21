@@ -352,7 +352,7 @@ def _load_in_buckaroo(path: str, session_id: str = "") -> dict:
 
     server_info = ensure_server()
 
-    payload = json.dumps({"session": session, "path": path, "mode": "buckaroo"}).encode()
+    payload = json.dumps({"session": session, "path": path, "mode": "lazy"}).encode()
     log.debug("POST %s/load payload=%s", SERVER_URL, payload.decode())
 
     req = Request(
