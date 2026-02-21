@@ -205,3 +205,49 @@ def get_catalog_entries() -> list[dict]:
         )
 
     return entries
+
+
+def get_all_entries() -> list[dict]:
+    """Return catalog entries + session entries, each tagged with ``source``.
+
+    Catalog entries get ``source: "catalog"``, session entries get ``source: "session"``.
+    """
+    from xorq_web.session_store import get_session_entries
+
+    catalog = [dict(e, source="catalog") for e in get_catalog_entries()]
+    session = [
+        {
+            "display_name": e["name"],
+            "aliases": [],
+            "entry_id": None,
+            "revision": None,
+            "build_id": e.get("build_id"),
+            "created_at": e.get("created_at"),
+            "source": "session",
+        }
+        for e in get_session_entries()
+    ]
+    return catalog + session
+
+
+def get_all_runs_merged() -> list[dict]:
+    """Return catalog runs + session entries merged, each tagged with ``source``."""
+    from xorq_web.session_store import get_session_entries
+
+    catalog_runs = [dict(r, source="catalog") for r in get_all_runs()]
+    session_runs = [
+        {
+            "display_name": e["name"],
+            "entry_id": None,
+            "revision_id": None,
+            "build_id": e.get("build_id"),
+            "created_at": e.get("created_at"),
+            "prompt": e.get("prompt"),
+            "execute_seconds": e.get("execute_seconds"),
+            "source": "session",
+        }
+        for e in get_session_entries()
+    ]
+    merged = catalog_runs + session_runs
+    merged.sort(key=lambda r: r.get("created_at") or "", reverse=True)
+    return merged

@@ -40,6 +40,20 @@
       {% end %}
     </ul>
     {% end %}
+    {% if session_nav_entries %}
+    <div class="nav-section-label session-nav-label">Session</div>
+    <ul class="nav-list">
+      {% for entry in session_nav_entries %}
+      <li>
+        <a href="/session/{{ entry['name'] }}"
+           class="session-nav-link {{ 'active' if current_entry == entry['name'] else '' }}">
+          {{ entry["name"] }}
+          <span class="nav-meta">draft</span>
+        </a>
+      </li>
+      {% end %}
+    </ul>
+    {% end %}
   </nav>
   <div class="main">
     {% block content %}{% end %}

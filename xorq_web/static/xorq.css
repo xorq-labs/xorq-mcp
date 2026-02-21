@@ -698,6 +698,99 @@ a:hover {
 }
 
 /* ==========================================================================
+   SESSION STYLES — amber/gold (#ffc832) to distinguish from catalog
+   ========================================================================== */
+
+.session-badge {
+  font-family: var(--font-mono);
+  background: rgba(255, 200, 50, 0.12);
+  color: #ffc832;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid rgba(255, 200, 50, 0.25);
+}
+
+.session-card {
+  border-left: 2px solid #ffc832;
+}
+
+.session-nav-label {
+  color: #ffc832 !important;
+}
+
+.session-nav-link {
+  border-left-color: transparent !important;
+}
+
+.session-nav-link:hover {
+  border-left-color: rgba(255, 200, 50, 0.5) !important;
+}
+
+.session-nav-link.active {
+  border-left-color: #ffc832 !important;
+  background: rgba(255, 200, 50, 0.08) !important;
+  color: #ffc832 !important;
+}
+
+.session-nav-link .nav-meta {
+  color: rgba(255, 200, 50, 0.45) !important;
+}
+
+.session-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: var(--space-1);
+  padding: 6px var(--space-2);
+  background: rgba(255, 200, 50, 0.06);
+  border: 1px solid rgba(255, 200, 50, 0.2);
+  border-radius: var(--radius-md);
+}
+
+.promote-btn {
+  font-family: var(--font-mono);
+  background: transparent;
+  color: var(--success);
+  padding: 4px 12px;
+  border: 1px solid var(--success);
+  border-radius: 0;
+  font-size: 11px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.promote-btn:hover {
+  background: var(--success);
+  color: var(--xorq-midnight);
+}
+
+.discard-btn {
+  font-family: var(--font-mono);
+  background: transparent;
+  color: var(--error);
+  padding: 4px 12px;
+  border: 1px solid var(--error);
+  border-radius: 0;
+  font-size: 11px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.discard-btn:hover {
+  background: var(--error);
+  color: var(--xorq-midnight);
+}
+
+/* ==========================================================================
    EMPTY STATE
    ========================================================================== */
 

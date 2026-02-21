@@ -10,30 +10,45 @@ import tornado.web
 
 from xorq_web.metadata import (
     ensure_buckaroo_session,
-    get_all_runs,
+    get_all_entries,
+    get_all_runs_merged,
     get_catalog_entries,
     get_entry_revisions,
     load_build_metadata,
     load_lineage_html,
 )
+from xorq_web.session_store import get_session_entries
 
 log = logging.getLogger("xorq.web")
 
 RESULTS_DIR = Path(tempfile.gettempdir()) / "xorq_mcp_results"
 
 
-class CatalogIndexHandler(tornado.web.RequestHandler):
+class BaseHandler(tornado.web.RequestHandler):
+    """Injects ``session_nav_entries`` into every template render."""
+
+    def get_template_namespace(self):
+        ns = super().get_template_namespace()
+        ns["session_nav_entries"] = get_session_entries()
+        return ns
+
+
+class CatalogIndexHandler(BaseHandler):
     def get(self):
+        all_entries = get_all_entries()
+        catalog_entries = [e for e in all_entries if e.get("source") == "catalog"]
+        session_entries = [e for e in all_entries if e.get("source") == "session"]
         nav_entries = get_catalog_entries()
         self.render(
             "catalog_index.html",
-            entries=nav_entries,
+            entries=catalog_entries,
+            session_entries=session_entries,
             nav_entries=nav_entries,
             current_entry="__catalog__",
         )
 
 
-class ExpressionDetailHandler(tornado.web.RequestHandler):
+class ExpressionDetailHandler(BaseHandler):
     def get(self, target: str):
         from xorq.catalog import Target, load_catalog, resolve_build_dir
         from xorq.common.utils.caching_utils import get_xorq_cache_dir
@@ -140,13 +155,138 @@ class ExpressionDetailHandler(tornado.web.RequestHandler):
             prev_rev_id=prev_rev_id,
             next_rev_id=next_rev_id,
             revision_metadata=revision_metadata,
+            is_session=False,
+            session_name=None,
         )
 
 
-class RunsHandler(tornado.web.RequestHandler):
+class SessionExpressionDetailHandler(BaseHandler):
+    """Render expression detail for a session-local (non-catalog) build."""
+
+    def get(self, name: str):
+        from xorq.common.utils.caching_utils import get_xorq_cache_dir
+        from xorq.ibis_yaml.compiler import load_expr
+
+        from xorq_web.session_store import get_session_entry
+
+        buckaroo_port = self.application.settings["buckaroo_port"]
+        nav_entries = get_catalog_entries()
+
+        entry = get_session_entry(name)
+        if entry is None:
+            self.set_status(404)
+            self.write(f"Session expression not found: {name}")
+            return
+
+        build_dir = Path(entry["build_path"])
+        if not build_dir.exists():
+            self.set_status(404)
+            self.write(f"Build directory missing: {build_dir}")
+            return
+
+        build_id = entry.get("build_id", build_dir.name)
+
+        # Load metadata
+        metadata = load_build_metadata(build_dir)
+
+        # Execute to parquet and load into Buckaroo
+        buckaroo_session = None
+        try:
+            cache_dir = get_xorq_cache_dir()
+            expr = load_expr(build_dir, cache_dir=cache_dir)
+            RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+            output_path = RESULTS_DIR / f"{build_id}.parquet"
+            expr.to_parquet(str(output_path))
+            ensure_buckaroo_session(str(output_path), build_id, buckaroo_port)
+            buckaroo_session = build_id
+        except Exception as exc:
+            log.error(
+                "Failed to load session expression for %s: %s\n%s",
+                name,
+                exc,
+                traceback.format_exc(),
+            )
+
+        # Load lineage
+        lineage = load_lineage_html(build_dir)
+
+        # Build revision_metadata-like dict from session entry
+        revision_metadata = {}
+        if entry.get("prompt"):
+            revision_metadata["prompt"] = entry["prompt"]
+        if entry.get("execute_seconds") is not None:
+            revision_metadata["execute_seconds"] = entry["execute_seconds"]
+
+        self.render(
+            "expression_detail.html",
+            nav_entries=nav_entries,
+            current_entry=name,
+            display_name=name,
+            revision=None,
+            build_id=build_id,
+            created_at=entry.get("created_at"),
+            metadata=metadata,
+            buckaroo_port=buckaroo_port,
+            buckaroo_session=buckaroo_session,
+            lineage=lineage,
+            revisions=[],
+            current_rev_id=None,
+            prev_url=None,
+            next_url=None,
+            prev_rev_id=None,
+            next_rev_id=None,
+            revision_metadata=revision_metadata or None,
+            is_session=True,
+            session_name=name,
+        )
+
+
+class PromoteHandler(BaseHandler):
+    """Promote a session expression to the permanent catalog."""
+
+    def post(self, name: str):
+        from xorq_web.catalog_utils import register_in_catalog
+        from xorq_web.session_store import get_session_entry, remove_session_entry
+
+        entry = get_session_entry(name)
+        if entry is None:
+            self.set_status(404)
+            self.write(f"Session expression not found: {name}")
+            return
+
+        build_path = entry["build_path"]
+        metadata = {}
+        if entry.get("prompt"):
+            metadata["prompt"] = entry["prompt"]
+        if entry.get("execute_seconds") is not None:
+            metadata["execute_seconds"] = entry["execute_seconds"]
+
+        try:
+            register_in_catalog(build_path, alias=name, metadata=metadata or None)
+        except Exception as exc:
+            log.error("Failed to promote session entry %s: %s", name, exc)
+            self.set_status(500)
+            self.write(f"Promote failed: {exc}")
+            return
+
+        remove_session_entry(name)
+        self.redirect(f"/entry/{name}")
+
+
+class DiscardHandler(BaseHandler):
+    """Remove a session expression without promoting it."""
+
+    def post(self, name: str):
+        from xorq_web.session_store import remove_session_entry
+
+        remove_session_entry(name)
+        self.redirect("/")
+
+
+class RunsHandler(BaseHandler):
     def get(self):
         nav_entries = get_catalog_entries()
-        runs = get_all_runs()
+        runs = get_all_runs_merged()
         self.render(
             "runs.html",
             nav_entries=nav_entries,

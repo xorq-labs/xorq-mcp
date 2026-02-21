@@ -4,8 +4,27 @@
 
 {% block content %}
 <div class="page-header">
-  <h1>{{ display_name }} <span class="badge">{{ revision or "" }}</span></h1>
+  <h1>{{ display_name }}
+    {% if is_session %}
+    <span class="session-badge">Session</span>
+    {% else %}
+    <span class="badge">{{ revision or "" }}</span>
+    {% end %}
+  </h1>
 </div>
+
+<!-- Session action bar -->
+{% if is_session %}
+<div class="session-actions">
+  <form action="/session/{{ session_name }}/promote" method="post" style="display:inline;">
+    <button type="submit" class="promote-btn">Promote to Catalog</button>
+  </form>
+  <form action="/session/{{ session_name }}/discard" method="post" style="display:inline;"
+        onsubmit="return confirm('Discard this session expression?');">
+    <button type="submit" class="discard-btn">Discard</button>
+  </form>
+</div>
+{% end %}
 
 <!-- Revision navigation -->
 {% if revisions and len(revisions) > 1 %}

@@ -18,6 +18,7 @@
   <thead>
     <tr>
       <th>Expression</th>
+      <th>Source</th>
       <th>Rev</th>
       <th>Created</th>
       <th>Execute Time</th>
@@ -28,14 +29,27 @@
     {% for run in runs %}
     <tr>
       <td>
-        <a href="/entry/{{ run['display_name'] }}@{{ run['revision_id'] }}">
+        {% if run.get("source") == "session" %}
+        <a href="/session/{{ run['display_name'] }}">
           {{ run["display_name"] }}
         </a>
+        {% else %}
+        <a href="/entry/{{ run['display_name'] }}{% if run.get('revision_id') %}@{{ run['revision_id'] }}{% end %}">
+          {{ run["display_name"] }}
+        </a>
+        {% end %}
       </td>
-      <td><span class="badge">{{ run["revision_id"] }}</span></td>
+      <td>
+        {% if run.get("source") == "session" %}
+        <span class="session-badge">Session</span>
+        {% else %}
+        <span class="badge">Catalog</span>
+        {% end %}
+      </td>
+      <td><span class="badge">{{ run.get("revision_id") or "—" }}</span></td>
       <td class="muted">{{ run["created_at"] or "—" }}</td>
-      <td class="mono">{{ (str(run["execute_seconds"]) + "s") if run["execute_seconds"] is not None else "—" }}</td>
-      <td class="prompt-cell">{{ run["prompt"] or "" }}</td>
+      <td class="mono">{{ (str(run["execute_seconds"]) + "s") if run.get("execute_seconds") is not None else "—" }}</td>
+      <td class="prompt-cell">{{ run.get("prompt") or "" }}</td>
     </tr>
     {% end %}
   </tbody>

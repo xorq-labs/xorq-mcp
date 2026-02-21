@@ -43,6 +43,29 @@ WEB_URL = f"http://localhost:{WEB_PORT}"
 log.info("MCP tool starting — server=%s web=%s", SERVER_URL, WEB_URL)
 
 # ---------------------------------------------------------------------------
+# Browser open rate limiting
+# ---------------------------------------------------------------------------
+_last_browser_open: float = 0.0
+_BROWSER_OPEN_MIN_INTERVAL = 10  # seconds between tab opens
+
+
+def _open_browser(url: str) -> None:
+    """Open *url* in the browser, but no more than once every
+    ``_BROWSER_OPEN_MIN_INTERVAL`` seconds to avoid spamming tabs during
+    batch runs."""
+    global _last_browser_open
+    import webbrowser
+
+    now = time.monotonic()
+    if now - _last_browser_open >= _BROWSER_OPEN_MIN_INTERVAL:
+        webbrowser.open(url)
+        _last_browser_open = now
+        log.info("Opened browser: %s", url)
+    else:
+        log.info("Skipped browser open (rate limited): %s", url)
+
+
+# ---------------------------------------------------------------------------
 # Results directory for parquet output
 # ---------------------------------------------------------------------------
 RESULTS_DIR = Path(tempfile.gettempdir()) / "xorq_mcp_results"
@@ -83,8 +106,17 @@ def _start_server_monitor(server_pid: int):
 
 
 def _cleanup_server():
-    """Terminate the data server, web server, and their monitors."""
+    """Terminate the data server, web server, and their monitors, and clean up session file."""
     global _server_proc, _server_monitor, _web_server_proc, _web_server_monitor
+
+    # Clean up session manifest for this process
+    try:
+        from xorq_web.session_store import cleanup_session
+
+        cleanup_session()
+    except Exception:
+        pass
+
     for label, proc_attr, monitor_attr in [
         ("buckaroo", "_server_proc", "_server_monitor"),
         ("web", "_web_server_proc", "_web_server_monitor"),
@@ -369,11 +401,8 @@ def _view_impl(path: str) -> str:
     server_info = result["server_info"]
 
     # Open the Buckaroo table in the browser
-    import webbrowser
-
-    webbrowser.open(url)
+    _open_browser(url)
     browser_action = "opened"
-    log.info("Opened browser: %s", url)
     server_pid = result.get("server_pid", server_info.get("server_pid", "?"))
 
     summary = (
@@ -442,93 +471,31 @@ mcp = FastMCP(
 def _register_in_catalog(build_path, alias=None, metadata=None):
     """Register a build in the xorq catalog with an optional alias.
 
-    Args:
-        build_path: Path to the build directory.
-        alias: Optional catalog alias.
-        metadata: Optional dict to store on the revision (e.g. {"prompt": "..."}).
+    Delegates to shared :func:`xorq_web.catalog_utils.register_in_catalog`.
     """
-    from xorq.catalog import (
-        AddBuildRequest,
-        CatalogPaths,
-        do_copy_build_safely,
-        do_ensure_directories,
-        do_save_catalog,
-        get_now_utc,
-        load_catalog,
-        process_catalog_update,
-        validate_build,
-    )
+    from xorq_web.catalog_utils import register_in_catalog
 
-    request = AddBuildRequest(build_path=build_path, alias=alias)
-    paths = CatalogPaths.create()
-    timestamp = get_now_utc().isoformat()
-
-    build_info = validate_build(request)
-    do_ensure_directories(paths)
-    do_copy_build_safely(build_info, paths)
-
-    catalog = load_catalog(path=paths.config_path)
-    updated_catalog, entry_id, revision_id = process_catalog_update(
-        catalog, build_info, request.alias, timestamp
-    )
-
-    # Workaround: upstream make_revision() doesn't accept metadata yet
-    # (see https://github.com/xorq-labs/xorq/issues/1598).
-    # We evolve the revision after the fact and re-save.
-    if metadata:
-        entry = updated_catalog.maybe_get_entry(entry_id)
-        if entry:
-            rev = entry.maybe_get_revision(revision_id)
-            if rev:
-                updated_rev = rev.evolve(metadata=metadata)
-                updated_history = tuple(
-                    updated_rev if r.revision_id == revision_id else r for r in entry.history
-                )
-                updated_entry = entry.evolve(history=updated_history)
-                updated_entries = tuple(
-                    updated_entry if e.entry_id == entry_id else e for e in updated_catalog.entries
-                )
-                updated_catalog = updated_catalog.evolve(entries=updated_entries)
-
-    do_save_catalog(updated_catalog, paths.config_path)
-
-    log.info(
-        "Registered build %s as entry=%s rev=%s alias=%s metadata=%s",
-        build_info.build_id,
-        entry_id,
-        revision_id,
-        alias,
-        list(metadata.keys()) if metadata else None,
-    )
-    return entry_id, revision_id
+    return register_in_catalog(build_path, alias=alias, metadata=metadata)
 
 
 def _update_revision_metadata(entry_id, revision_id, updates):
-    """Merge additional keys into a revision's metadata dict and re-save the catalog."""
-    from xorq.catalog import CatalogPaths, do_save_catalog, load_catalog
+    """Merge additional keys into a revision's metadata dict and re-save the catalog.
 
-    paths = CatalogPaths.create()
-    catalog = load_catalog(path=paths.config_path)
-    entry = catalog.maybe_get_entry(entry_id)
-    if not entry:
-        return
-    rev = entry.maybe_get_revision(revision_id)
-    if not rev:
-        return
+    Delegates to shared :func:`xorq_web.catalog_utils.update_revision_metadata`.
+    """
+    from xorq_web.catalog_utils import update_revision_metadata
 
-    merged = dict(rev.metadata or {}, **updates)
-    updated_rev = rev.evolve(metadata=merged)
-    updated_history = tuple(
-        updated_rev if r.revision_id == revision_id else r for r in entry.history
-    )
-    updated_entry = entry.evolve(history=updated_history)
-    updated_entries = tuple(updated_entry if e.entry_id == entry_id else e for e in catalog.entries)
-    updated_catalog = catalog.evolve(entries=updated_entries)
-    do_save_catalog(updated_catalog, paths.config_path)
+    update_revision_metadata(entry_id, revision_id, updates)
 
 
 @mcp.tool()
-def xorq_run(script_path: str, expr_name: str = "expr", alias: str = "", prompt: str = "") -> str:
+def xorq_run(
+    script_path: str,
+    expr_name: str = "expr",
+    alias: str = "",
+    prompt: str = "",
+    catalog: bool = True,
+) -> str:
     """Build, execute, and visualize a xorq expression from a Python script.
 
     Imports the script, extracts the expression variable, builds the DAG,
@@ -540,6 +507,9 @@ def xorq_run(script_path: str, expr_name: str = "expr", alias: str = "", prompt:
         alias: Optional catalog alias to register this build under.
         prompt: Optional prompt/description that produced this expression
             (stored as revision metadata).
+        catalog: If True (default), register in the permanent catalog.
+            If False, keep as a session-local draft visible in the web UI
+            under /session/{name} that can be promoted or discarded.
     """
     from xorq.common.utils.caching_utils import get_xorq_cache_dir
     from xorq.common.utils.import_utils import import_from_path
@@ -578,21 +548,11 @@ def xorq_run(script_path: str, expr_name: str = "expr", alias: str = "", prompt:
     build_hash = Path(build_path).name
     log.info("Expression built — hash=%s path=%s", build_hash, build_path)
 
-    # 3. Register in catalog
+    # 3. Determine display name
     catalog_alias = alias or None
     if not catalog_alias:
         # Derive alias from script filename (e.g., "simple_example" from "simple_example.py")
         catalog_alias = Path(script_path).stem
-    revision_metadata = {"prompt": prompt} if prompt else None
-    entry_id = revision_id = None
-    try:
-        entry_id, revision_id = _register_in_catalog(
-            build_path, alias=catalog_alias, metadata=revision_metadata
-        )
-        catalog_msg = f"Catalog: alias={catalog_alias} entry={entry_id} rev={revision_id}"
-    except Exception as exc:
-        log.error("Catalog registration failed: %s\n%s", exc, traceback.format_exc())
-        catalog_msg = f"Catalog registration failed: {exc}"
 
     # 4. Load the expression back (with cache dir)
     cache_dir = get_xorq_cache_dir()
@@ -614,17 +574,47 @@ def xorq_run(script_path: str, expr_name: str = "expr", alias: str = "", prompt:
 
     log.info("Expression executed in %.3fs — output=%s", execute_seconds, output_path)
 
-    # Store execute time on the revision metadata
-    if entry_id and revision_id:
-        _update_revision_metadata(entry_id, revision_id, {"execute_seconds": execute_seconds})
+    # 6. Register in catalog or session store
+    if catalog:
+        revision_metadata = {"prompt": prompt} if prompt else None
+        entry_id = revision_id = None
+        try:
+            entry_id, revision_id = _register_in_catalog(
+                build_path, alias=catalog_alias, metadata=revision_metadata
+            )
+            catalog_msg = f"Catalog: alias={catalog_alias} entry={entry_id} rev={revision_id}"
+        except Exception as exc:
+            log.error("Catalog registration failed: %s\n%s", exc, traceback.format_exc())
+            catalog_msg = f"Catalog registration failed: {exc}"
 
-    # 6. Open in xorq web UI
-    import webbrowser
+        # Store execute time on the revision metadata
+        if entry_id and revision_id:
+            _update_revision_metadata(entry_id, revision_id, {"execute_seconds": execute_seconds})
 
+        web_path = f"/entry/{catalog_alias}"
+    else:
+        from xorq_web.session_store import add_session_entry
+
+        try:
+            add_session_entry(
+                name=catalog_alias,
+                build_path=str(build_path),
+                build_id=build_hash,
+                prompt=prompt,
+                execute_seconds=execute_seconds,
+            )
+            catalog_msg = f"Session: name={catalog_alias} (not in permanent catalog)"
+        except Exception as exc:
+            log.error("Session registration failed: %s\n%s", exc, traceback.format_exc())
+            catalog_msg = f"Session registration failed: {exc}"
+
+        web_path = f"/session/{catalog_alias}"
+
+    # 7. Open in xorq web UI
     ensure_server()
     ensure_web_server()
-    web_url = f"{WEB_URL}/entry/{catalog_alias}"
-    webbrowser.open(web_url)
+    web_url = f"{WEB_URL}{web_path}"
+    _open_browser(web_url)
     log.info("Opened web UI: %s", web_url)
 
     # Return a text summary
@@ -691,12 +681,10 @@ def xorq_view_build(target: str) -> str:
     log.info("Build executed — output=%s", output_path)
 
     # Open in xorq web UI
-    import webbrowser
-
     ensure_server()
     ensure_web_server()
     web_url = f"{WEB_URL}/entry/{target}"
-    webbrowser.open(web_url)
+    _open_browser(web_url)
     log.info("Opened web UI: %s", web_url)
 
     # Return text summary
@@ -780,12 +768,10 @@ def xorq_catalog_ls() -> str:
         )
 
     # Open the xorq web catalog page
-    import webbrowser
-
     ensure_server()
     ensure_web_server()
     web_url = f"{WEB_URL}/"
-    webbrowser.open(web_url)
+    _open_browser(web_url)
     log.info("Opened catalog page: %s", web_url)
 
     # Return text summary

@@ -387,16 +387,29 @@ class TestCatalogIndexHandler(tornado.testing.AsyncHTTPTestCase):
     def get_app(self):
         return make_app(buckaroo_port=8455)
 
+    @patch("xorq_web.handlers.get_session_entries", return_value=[])
+    @patch("xorq_web.handlers.get_all_entries", return_value=[])
     @patch("xorq_web.handlers.get_catalog_entries", return_value=[])
-    def test_empty_catalog_renders(self, mock_entries):
+    def test_empty_catalog_renders(self, mock_entries, mock_all, mock_session):
         resp = self.fetch("/")
         assert resp.code == 200
         body = resp.body.decode()
         assert "xorq" in body
         assert "No catalog entries" in body
 
+    @patch("xorq_web.handlers.get_session_entries", return_value=[])
+    @patch("xorq_web.handlers.get_all_entries")
     @patch("xorq_web.handlers.get_catalog_entries")
-    def test_catalog_with_entries(self, mock_entries):
+    def test_catalog_with_entries(self, mock_entries, mock_all, mock_session):
+        entry = {
+            "display_name": "test_expr",
+            "aliases": ["test_expr"],
+            "entry_id": "uuid-1",
+            "revision": "r1",
+            "build_id": "abc123",
+            "created_at": "2025-01-01",
+            "source": "catalog",
+        }
         mock_entries.return_value = [
             {
                 "display_name": "test_expr",
@@ -407,6 +420,7 @@ class TestCatalogIndexHandler(tornado.testing.AsyncHTTPTestCase):
                 "created_at": "2025-01-01",
             },
         ]
+        mock_all.return_value = [entry]
         resp = self.fetch("/")
         assert resp.code == 200
         body = resp.body.decode()
@@ -421,17 +435,19 @@ class TestRunsHandler(tornado.testing.AsyncHTTPTestCase):
     def get_app(self):
         return make_app(buckaroo_port=8455)
 
+    @patch("xorq_web.handlers.get_session_entries", return_value=[])
     @patch("xorq_web.handlers.get_catalog_entries", return_value=[])
-    @patch("xorq_web.handlers.get_all_runs", return_value=[])
-    def test_empty_runs_renders(self, mock_runs, mock_entries):
+    @patch("xorq_web.handlers.get_all_runs_merged", return_value=[])
+    def test_empty_runs_renders(self, mock_runs, mock_entries, mock_session):
         resp = self.fetch("/runs")
         assert resp.code == 200
         body = resp.body.decode()
         assert "No runs yet" in body
 
+    @patch("xorq_web.handlers.get_session_entries", return_value=[])
     @patch("xorq_web.handlers.get_catalog_entries", return_value=[])
-    @patch("xorq_web.handlers.get_all_runs")
-    def test_runs_with_data(self, mock_runs, mock_entries):
+    @patch("xorq_web.handlers.get_all_runs_merged")
+    def test_runs_with_data(self, mock_runs, mock_entries, mock_session):
         mock_runs.return_value = [
             {
                 "display_name": "my_expr",
@@ -441,6 +457,7 @@ class TestRunsHandler(tornado.testing.AsyncHTTPTestCase):
                 "created_at": "2025-06-01",
                 "prompt": "add more rows",
                 "execute_seconds": 2.5,
+                "source": "catalog",
             },
             {
                 "display_name": "my_expr",
@@ -450,6 +467,7 @@ class TestRunsHandler(tornado.testing.AsyncHTTPTestCase):
                 "created_at": "2025-01-01",
                 "prompt": None,
                 "execute_seconds": None,
+                "source": "catalog",
             },
         ]
         resp = self.fetch("/runs")
@@ -469,13 +487,15 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
     def get_app(self):
         return make_app(buckaroo_port=8455)
 
+    @patch("xorq_web.handlers.get_session_entries", return_value=[])
     @patch("xorq_web.handlers.get_catalog_entries", return_value=[])
     @patch("xorq.catalog.resolve_build_dir", return_value=None)
     @patch("xorq.catalog.load_catalog")
-    def test_missing_target_returns_404(self, mock_cat, mock_resolve, mock_entries):
+    def test_missing_target_returns_404(self, mock_cat, mock_resolve, mock_entries, mock_session):
         resp = self.fetch("/entry/nonexistent")
         assert resp.code == 404
 
+    @patch("xorq_web.handlers.get_session_entries", return_value=[])
     @patch("xorq_web.handlers.load_lineage_html", return_value={})
     @patch(
         "xorq_web.handlers.load_build_metadata",
@@ -501,6 +521,7 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
         mock_bk_session,
         mock_meta,
         mock_lineage,
+        mock_session,
     ):
         import tempfile
 
@@ -538,6 +559,7 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
             assert "abc123" in body
             assert "0.3.7" in body
 
+    @patch("xorq_web.handlers.get_session_entries", return_value=[])
     @patch("xorq_web.handlers.load_lineage_html", return_value={})
     @patch("xorq_web.handlers.load_build_metadata", return_value={})
     @patch("xorq_web.handlers.ensure_buckaroo_session", return_value={"session": "s1"})
@@ -560,6 +582,7 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
         mock_bk_session,
         mock_meta,
         mock_lineage,
+        mock_session,
     ):
         import tempfile
 
@@ -628,6 +651,7 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
             # Next arrow should link to r3
             assert "/entry/my_expr@r3" in body
 
+    @patch("xorq_web.handlers.get_session_entries", return_value=[])
     @patch("xorq_web.handlers.load_lineage_html", return_value={})
     @patch("xorq_web.handlers.load_build_metadata", return_value={})
     @patch("xorq_web.handlers.ensure_buckaroo_session", return_value={"session": "s1"})
@@ -650,6 +674,7 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
         mock_bk_session,
         mock_meta,
         mock_lineage,
+        mock_session,
     ):
         import tempfile
 
@@ -694,6 +719,7 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
             # Should NOT render the revision nav bar for a single revision
             assert "revision-nav" not in body
 
+    @patch("xorq_web.handlers.get_session_entries", return_value=[])
     @patch("xorq_web.handlers.load_lineage_html", return_value={})
     @patch("xorq_web.handlers.load_build_metadata", return_value={})
     @patch("xorq_web.handlers.ensure_buckaroo_session", return_value={"session": "s1"})
@@ -716,6 +742,7 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
         mock_bk_session,
         mock_meta,
         mock_lineage,
+        mock_session,
     ):
         import tempfile
 
@@ -757,6 +784,7 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
             assert "prompt-block" in body
             assert "expand the number of rows to 20" in body
 
+    @patch("xorq_web.handlers.get_session_entries", return_value=[])
     @patch("xorq_web.handlers.load_lineage_html", return_value={})
     @patch("xorq_web.handlers.load_build_metadata", return_value={})
     @patch("xorq_web.handlers.ensure_buckaroo_session", return_value={"session": "s1"})
@@ -779,6 +807,7 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
         mock_bk_session,
         mock_meta,
         mock_lineage,
+        mock_session,
     ):
         import tempfile
 
@@ -911,3 +940,172 @@ class TestCatalogLsOpensWebUrl:
         opened_url = mock_browser.call_args[0][0]
         assert opened_url.startswith(WEB_URL)
         assert "1 entries" in result
+
+
+# -----------------------------------------------------------------------
+# session_store.py
+# -----------------------------------------------------------------------
+class TestSessionStore:
+    def test_add_and_get_entries(self, tmp_path, monkeypatch):
+        from xorq_web import session_store
+
+        monkeypatch.setattr(session_store, "SESSIONS_DIR", tmp_path)
+        session_store.add_session_entry(
+            name="my_draft", build_path="/tmp/build/abc", build_id="abc123", prompt="test"
+        )
+        entries = session_store.get_session_entries()
+        assert len(entries) == 1
+        assert entries[0]["name"] == "my_draft"
+        assert entries[0]["build_id"] == "abc123"
+        assert entries[0]["prompt"] == "test"
+
+    def test_add_overwrites_same_name(self, tmp_path, monkeypatch):
+        from xorq_web import session_store
+
+        monkeypatch.setattr(session_store, "SESSIONS_DIR", tmp_path)
+        session_store.add_session_entry(
+            name="draft", build_path="/tmp/build/aaa", build_id="aaa"
+        )
+        session_store.add_session_entry(
+            name="draft", build_path="/tmp/build/bbb", build_id="bbb"
+        )
+        entries = session_store.get_session_entries()
+        assert len(entries) == 1
+        assert entries[0]["build_id"] == "bbb"
+
+    def test_remove_entry(self, tmp_path, monkeypatch):
+        from xorq_web import session_store
+
+        monkeypatch.setattr(session_store, "SESSIONS_DIR", tmp_path)
+        session_store.add_session_entry(
+            name="to_remove", build_path="/tmp/x", build_id="x"
+        )
+        assert session_store.remove_session_entry("to_remove") is True
+        assert session_store.get_session_entries() == []
+
+    def test_remove_nonexistent_returns_false(self, tmp_path, monkeypatch):
+        from xorq_web import session_store
+
+        monkeypatch.setattr(session_store, "SESSIONS_DIR", tmp_path)
+        assert session_store.remove_session_entry("nope") is False
+
+    def test_get_session_entry(self, tmp_path, monkeypatch):
+        from xorq_web import session_store
+
+        monkeypatch.setattr(session_store, "SESSIONS_DIR", tmp_path)
+        session_store.add_session_entry(
+            name="findme", build_path="/tmp/b", build_id="b1"
+        )
+        entry = session_store.get_session_entry("findme")
+        assert entry is not None
+        assert entry["build_id"] == "b1"
+        assert session_store.get_session_entry("nope") is None
+
+    def test_update_metadata(self, tmp_path, monkeypatch):
+        from xorq_web import session_store
+
+        monkeypatch.setattr(session_store, "SESSIONS_DIR", tmp_path)
+        session_store.add_session_entry(
+            name="upd", build_path="/tmp/u", build_id="u1"
+        )
+        assert session_store.update_session_entry_metadata("upd", {"execute_seconds": 1.5})
+        entry = session_store.get_session_entry("upd")
+        assert entry["execute_seconds"] == 1.5
+
+    def test_cleanup_session(self, tmp_path, monkeypatch):
+        from xorq_web import session_store
+
+        monkeypatch.setattr(session_store, "SESSIONS_DIR", tmp_path)
+        session_store.add_session_entry(
+            name="clean", build_path="/tmp/c", build_id="c1"
+        )
+        assert (tmp_path / f"{os.getpid()}.json").exists()
+        session_store.cleanup_session()
+        assert not (tmp_path / f"{os.getpid()}.json").exists()
+
+    def test_stale_pid_cleanup(self, tmp_path, monkeypatch):
+        from xorq_web import session_store
+
+        monkeypatch.setattr(session_store, "SESSIONS_DIR", tmp_path)
+        # Write a manifest for a dead PID
+        dead_pid = 99999999
+        manifest = tmp_path / f"{dead_pid}.json"
+        manifest.write_text(json.dumps([{"name": "stale", "build_path": "/x", "build_id": "x"}]))
+        entries = session_store.get_session_entries()
+        # Should be empty (stale PID cleaned up)
+        assert len(entries) == 0
+        assert not manifest.exists()
+
+
+# -----------------------------------------------------------------------
+# handlers.py — SessionExpressionDetailHandler
+# -----------------------------------------------------------------------
+class TestSessionExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
+    def get_app(self):
+        return make_app(buckaroo_port=8455)
+
+    @patch("xorq_web.handlers.get_session_entries", return_value=[])
+    @patch("xorq_web.handlers.get_catalog_entries", return_value=[])
+    @patch("xorq_web.session_store.get_session_entry", return_value=None)
+    def test_missing_session_returns_404(self, mock_entry, mock_entries, mock_session):
+        resp = self.fetch("/session/nonexistent")
+        assert resp.code == 404
+
+    @patch("xorq_web.handlers.get_session_entries", return_value=[])
+    @patch("xorq_web.handlers.load_lineage_html", return_value={})
+    @patch("xorq_web.handlers.load_build_metadata", return_value={})
+    @patch("xorq_web.handlers.ensure_buckaroo_session", return_value={"session": "abc"})
+    @patch("xorq_web.handlers.get_catalog_entries", return_value=[])
+    @patch("xorq.ibis_yaml.compiler.load_expr")
+    @patch("xorq.common.utils.caching_utils.get_xorq_cache_dir", return_value="/tmp/cache")
+    def test_valid_session_renders(
+        self,
+        mock_cache,
+        mock_load_expr,
+        mock_entries,
+        mock_bk_session,
+        mock_meta,
+        mock_lineage,
+        mock_session,
+    ):
+        import tempfile
+
+        mock_load_expr.return_value = MagicMock()
+
+        with tempfile.TemporaryDirectory() as td:
+            build_dir = Path(td) / "abc123"
+            build_dir.mkdir()
+
+            with patch("xorq_web.session_store.get_session_entry") as mock_entry:
+                mock_entry.return_value = {
+                    "name": "my_draft",
+                    "build_path": str(build_dir),
+                    "build_id": "abc123",
+                    "created_at": "2025-06-01",
+                    "prompt": "test prompt",
+                    "execute_seconds": 1.2,
+                }
+                resp = self.fetch("/session/my_draft")
+
+        assert resp.code == 200
+        body = resp.body.decode()
+        assert "my_draft" in body
+        assert "session-actions" in body
+        assert "Promote to Catalog" in body
+        assert "Discard" in body
+        assert "test prompt" in body
+
+
+# -----------------------------------------------------------------------
+# handlers.py — DiscardHandler
+# -----------------------------------------------------------------------
+class TestDiscardHandler(tornado.testing.AsyncHTTPTestCase):
+    def get_app(self):
+        return make_app(buckaroo_port=8455)
+
+    @patch("xorq_web.session_store.remove_session_entry", return_value=True)
+    def test_discard_redirects_to_index(self, mock_remove):
+        resp = self.fetch("/session/my_draft/discard", method="POST", body=b"", follow_redirects=False)
+        assert resp.code == 302
+        assert resp.headers["Location"] == "/"
+        mock_remove.assert_called_once_with("my_draft")

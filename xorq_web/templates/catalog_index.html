@@ -5,15 +5,17 @@
 {% block content %}
 <div class="page-header">
   <h1>Catalog</h1>
-  <p class="stats" style="margin-top:0.25rem;">{{ len(entries) }} entries</p>
+  <p class="stats" style="margin-top:0.25rem;">{{ len(entries) }} entries{% if session_entries %}, {{ len(session_entries) }} session{% end %}</p>
 </div>
 
-{% if not entries %}
+{% if not entries and not session_entries %}
 <div class="empty-state">
   <h2>No catalog entries</h2>
   <p>Run <code>xorq_run</code> on a script to add entries.</p>
 </div>
-{% else %}
+{% end %}
+
+{% if entries %}
 <div class="card-grid">
   {% for e in entries %}
   <div class="card">
@@ -33,6 +35,27 @@
       {% if e["aliases"] %}
       <div><strong>Aliases:</strong> {{ ", ".join(e["aliases"]) }}</div>
       {% end %}
+    </div>
+  </div>
+  {% end %}
+</div>
+{% end %}
+
+{% if session_entries %}
+<h2 class="section-title" style="margin-top:var(--space-3);">Session Drafts</h2>
+<div class="card-grid">
+  {% for e in session_entries %}
+  <div class="card session-card">
+    <div class="card-header">
+      <h2><a href="/session/{{ e['display_name'] }}">{{ e["display_name"] }}</a></h2>
+      <span class="session-badge">Session</span>
+    </div>
+    <div class="meta">
+      <span class="badge">draft</span>
+    </div>
+    <div class="details">
+      <div><strong>Build:</strong> <code>{{ (e["build_id"] or "—")[:12] }}</code></div>
+      <div><strong>Created:</strong> {{ e["created_at"] or "—" }}</div>
     </div>
   </div>
   {% end %}
