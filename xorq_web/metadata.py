@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 from pathlib import Path
 from urllib.request import Request, urlopen
 
@@ -74,15 +75,56 @@ def _render_node_html(node) -> str:
     return f"<li>{label}\n<ul>{children_html}</ul></li>"
 
 
+def _buckaroo_health_check(port: int) -> bool:
+    """Return True if the Buckaroo server on *port* is healthy."""
+    try:
+        resp = urlopen(f"http://localhost:{port}/health", timeout=2)
+        return resp.status == 200
+    except Exception:
+        return False
+
+
+def _start_buckaroo_server(port: int) -> None:
+    """Start a Buckaroo server on *port* and wait until it's healthy."""
+    import subprocess
+    import sys
+    import time
+
+    cmd = [sys.executable, "-m", "buckaroo.server", "--no-browser", "--port", str(port)]
+    log.info("Starting buckaroo server: %s", " ".join(cmd))
+
+    log_dir = os.path.join(os.path.expanduser("~"), ".xorq", "logs")
+    os.makedirs(log_dir, exist_ok=True)
+    log_fh = open(os.path.join(log_dir, "server.log"), "a")
+    subprocess.Popen(cmd, stdout=log_fh, stderr=log_fh)
+
+    for _ in range(20):
+        time.sleep(0.25)
+        if _buckaroo_health_check(port):
+            log.info("Buckaroo server ready on port %d", port)
+            return
+
+    raise RuntimeError(f"Buckaroo server failed to start on port {port} within 5s")
+
+
+def ensure_buckaroo_server(port: int) -> None:
+    """Ensure the Buckaroo server is running on *port*, starting it if necessary."""
+    if not _buckaroo_health_check(port):
+        _start_buckaroo_server(port)
+
+
 def ensure_buckaroo_session(parquet_path: str, session_id: str, buckaroo_port: int) -> dict:
     """POST to Buckaroo /load to ensure a session exists for this data.
 
+    Starts the Buckaroo server if it isn't already running.
     Returns the Buckaroo response dict with session, rows, columns, etc.
     """
     import os
 
+    ensure_buckaroo_server(buckaroo_port)
+
     payload = json.dumps(
-        {"session": session_id, "path": os.path.abspath(parquet_path), "mode": "lazy"}
+        {"session": session_id, "path": os.path.abspath(parquet_path), "mode": "buckaroo"}
     ).encode()
 
     req = Request(

@@ -76,6 +76,11 @@
 <div class="iframe-container">
   <iframe src="http://localhost:{{ buckaroo_port }}/s/{{ buckaroo_session }}"></iframe>
 </div>
+{% elif buckaroo_error %}
+<h2 class="section-title">Data Preview</h2>
+<div class="buckaroo-error">
+  <strong>Failed to load data preview:</strong> {{ buckaroo_error }}
+</div>
 {% end %}
 
 <!-- Metadata grid -->

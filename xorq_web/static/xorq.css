@@ -607,6 +607,19 @@ a:hover {
   background: #fff;
 }
 
+.buckaroo-error {
+  padding: var(--space-2);
+  margin-bottom: var(--space-2);
+  background: #fff3f3;
+  border: 1px solid #f5c6cb;
+  border-radius: var(--radius-md);
+  color: #721c24;
+  font-size: 0.875rem;
+  font-family: var(--font-mono);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 /* ==========================================================================
    LINEAGE
    ========================================================================== */

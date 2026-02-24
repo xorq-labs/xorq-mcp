@@ -117,6 +117,7 @@ class ExpressionDetailHandler(BaseHandler):
 
         # Execute to parquet and load into Buckaroo
         buckaroo_session = None
+        buckaroo_error = None
         try:
             cache_dir = get_xorq_cache_dir()
             expr = load_expr(build_dir, cache_dir=cache_dir)
@@ -126,6 +127,7 @@ class ExpressionDetailHandler(BaseHandler):
             ensure_buckaroo_session(str(output_path), build_id, buckaroo_port)
             buckaroo_session = build_id
         except Exception as exc:
+            buckaroo_error = str(exc)
             log.error(
                 "Failed to load expression for %s: %s\n%s",
                 target,
@@ -147,6 +149,7 @@ class ExpressionDetailHandler(BaseHandler):
             metadata=metadata,
             buckaroo_port=buckaroo_port,
             buckaroo_session=buckaroo_session,
+            buckaroo_error=buckaroo_error,
             lineage=lineage,
             revisions=revisions,
             current_rev_id=current_rev_id,
@@ -191,6 +194,7 @@ class SessionExpressionDetailHandler(BaseHandler):
 
         # Execute to parquet and load into Buckaroo
         buckaroo_session = None
+        buckaroo_error = None
         try:
             cache_dir = get_xorq_cache_dir()
             expr = load_expr(build_dir, cache_dir=cache_dir)
@@ -200,6 +204,7 @@ class SessionExpressionDetailHandler(BaseHandler):
             ensure_buckaroo_session(str(output_path), build_id, buckaroo_port)
             buckaroo_session = build_id
         except Exception as exc:
+            buckaroo_error = str(exc)
             log.error(
                 "Failed to load session expression for %s: %s\n%s",
                 name,
@@ -228,6 +233,7 @@ class SessionExpressionDetailHandler(BaseHandler):
             metadata=metadata,
             buckaroo_port=buckaroo_port,
             buckaroo_session=buckaroo_session,
+            buckaroo_error=buckaroo_error,
             lineage=lineage,
             revisions=[],
             current_rev_id=None,
