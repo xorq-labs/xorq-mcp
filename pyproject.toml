@@ -9,7 +9,7 @@ description = "MCP server for xorq with Buckaroo visualization"
 requires-python = ">=3.11"
 dependencies = [
     "xorq>=0.3.8",
-    "buckaroo[mcp]>=0.12.8",
+    "buckaroo[mcp]>=0.12.9",
     "tornado>=6.0",
 ]
 
@@ -17,6 +17,8 @@ dependencies = [
 test = [
     "pytest>=7.0",
     "pytest-mock>=3.10",
+    "playwright>=1.40",
+    "pytest-playwright>=0.7",
     "ruff>=0.4",
     "isort>=5.12",
 ]
@@ -28,6 +30,12 @@ exclude = ["examples"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W"]
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: tests that start real Buckaroo/web servers",
+    "playwright: browser-based end-to-end tests",
+]
 
 [tool.isort]
 profile = "black"
