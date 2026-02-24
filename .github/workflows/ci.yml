@@ -24,8 +24,14 @@ jobs:
       - name: Install dependencies
         run: uv sync --extra test
 
-      - name: Run tests
-        run: uv run pytest tests/ -v
+      - name: Run unit tests
+        run: uv run pytest tests/test_web.py tests/test_tools.py -v
+
+      - name: Install Playwright browsers
+        run: uv run playwright install --with-deps chromium
+
+      - name: Run integration and Playwright tests
+        run: uv run pytest tests/test_buckaroo_reliability.py tests/test_playwright.py -v
 
   lint:
     runs-on: ubuntu-latest

@@ -963,12 +963,8 @@ class TestSessionStore:
         from xorq_web import session_store
 
         monkeypatch.setattr(session_store, "SESSIONS_DIR", tmp_path)
-        session_store.add_session_entry(
-            name="draft", build_path="/tmp/build/aaa", build_id="aaa"
-        )
-        session_store.add_session_entry(
-            name="draft", build_path="/tmp/build/bbb", build_id="bbb"
-        )
+        session_store.add_session_entry(name="draft", build_path="/tmp/build/aaa", build_id="aaa")
+        session_store.add_session_entry(name="draft", build_path="/tmp/build/bbb", build_id="bbb")
         entries = session_store.get_session_entries()
         assert len(entries) == 1
         assert entries[0]["build_id"] == "bbb"
@@ -977,9 +973,7 @@ class TestSessionStore:
         from xorq_web import session_store
 
         monkeypatch.setattr(session_store, "SESSIONS_DIR", tmp_path)
-        session_store.add_session_entry(
-            name="to_remove", build_path="/tmp/x", build_id="x"
-        )
+        session_store.add_session_entry(name="to_remove", build_path="/tmp/x", build_id="x")
         assert session_store.remove_session_entry("to_remove") is True
         assert session_store.get_session_entries() == []
 
@@ -993,9 +987,7 @@ class TestSessionStore:
         from xorq_web import session_store
 
         monkeypatch.setattr(session_store, "SESSIONS_DIR", tmp_path)
-        session_store.add_session_entry(
-            name="findme", build_path="/tmp/b", build_id="b1"
-        )
+        session_store.add_session_entry(name="findme", build_path="/tmp/b", build_id="b1")
         entry = session_store.get_session_entry("findme")
         assert entry is not None
         assert entry["build_id"] == "b1"
@@ -1005,9 +997,7 @@ class TestSessionStore:
         from xorq_web import session_store
 
         monkeypatch.setattr(session_store, "SESSIONS_DIR", tmp_path)
-        session_store.add_session_entry(
-            name="upd", build_path="/tmp/u", build_id="u1"
-        )
+        session_store.add_session_entry(name="upd", build_path="/tmp/u", build_id="u1")
         assert session_store.update_session_entry_metadata("upd", {"execute_seconds": 1.5})
         entry = session_store.get_session_entry("upd")
         assert entry["execute_seconds"] == 1.5
@@ -1016,9 +1006,7 @@ class TestSessionStore:
         from xorq_web import session_store
 
         monkeypatch.setattr(session_store, "SESSIONS_DIR", tmp_path)
-        session_store.add_session_entry(
-            name="clean", build_path="/tmp/c", build_id="c1"
-        )
+        session_store.add_session_entry(name="clean", build_path="/tmp/c", build_id="c1")
         assert (tmp_path / f"{os.getpid()}.json").exists()
         session_store.cleanup_session()
         assert not (tmp_path / f"{os.getpid()}.json").exists()
@@ -1105,7 +1093,9 @@ class TestDiscardHandler(tornado.testing.AsyncHTTPTestCase):
 
     @patch("xorq_web.session_store.remove_session_entry", return_value=True)
     def test_discard_redirects_to_index(self, mock_remove):
-        resp = self.fetch("/session/my_draft/discard", method="POST", body=b"", follow_redirects=False)
+        resp = self.fetch(
+            "/session/my_draft/discard", method="POST", body=b"", follow_redirects=False
+        )
         assert resp.code == 302
         assert resp.headers["Location"] == "/"
         mock_remove.assert_called_once_with("my_draft")

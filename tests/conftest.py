@@ -2,10 +2,7 @@
 
 import json
 import os
-import signal
 import subprocess
-import sys
-import tempfile
 import time
 from pathlib import Path
 from urllib.request import Request, urlopen
@@ -120,7 +117,11 @@ def web_server(buckaroo_server):
 def small_parquet(tmp_path):
     """Create a small parquet file (100 rows)."""
     df = pd.DataFrame(
-        {"id": range(100), "name": [f"item_{i}" for i in range(100)], "value": [i * 1.5 for i in range(100)]}
+        {
+            "id": range(100),
+            "name": [f"item_{i}" for i in range(100)],
+            "value": [i * 1.5 for i in range(100)],
+        }
     )
     path = tmp_path / "small.parquet"
     df.to_parquet(str(path))

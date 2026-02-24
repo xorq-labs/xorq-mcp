@@ -4,27 +4,21 @@ These tests use real Buckaroo + web servers to exercise actual failure modes.
 """
 
 import json
-import os
-import signal
-import subprocess
-import sys
 import time
-from pathlib import Path
-from urllib.error import HTTPError, URLError
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 import pandas as pd
 import pytest
-
-pytestmark = pytest.mark.integration
 
 from tests.conftest import (
     BUCKAROO_TEST_PORT,
     WEB_TEST_PORT,
     _health,
     _load_session,
-    _wait_healthy,
 )
+
+pytestmark = pytest.mark.integration
 
 
 # ---------------------------------------------------------------------------
@@ -115,15 +109,13 @@ class TestSessionDataIntegrity:
         df1 = pd.DataFrame({"a": [1], "b": [2]})
         p1 = tmp_path / "cols1.parquet"
         df1.to_parquet(str(p1))
-        r1 = _load_session(str(p1), "col_integrity", BUCKAROO_TEST_PORT)
+        _load_session(str(p1), "col_integrity", BUCKAROO_TEST_PORT)
 
         df2 = pd.DataFrame({"x": [1], "y": [2], "z": [3]})
         p2 = tmp_path / "cols2.parquet"
         df2.to_parquet(str(p2))
         r2 = _load_session(str(p2), "col_integrity", BUCKAROO_TEST_PORT)
-        assert len(r2["columns"]) == 3, (
-            f"Expected 3 columns after reload, got {len(r2['columns'])}"
-        )
+        assert len(r2["columns"]) == 3, f"Expected 3 columns after reload, got {len(r2['columns'])}"
 
 
 # ---------------------------------------------------------------------------
@@ -135,9 +127,7 @@ class TestServerCrashRecovery:
         bad = tmp_path / "corrupt.parquet"
         bad.write_bytes(b"this is not a parquet file at all")
 
-        payload = json.dumps(
-            {"session": "corrupt", "path": str(bad), "mode": "lazy"}
-        ).encode()
+        payload = json.dumps({"session": "corrupt", "path": str(bad), "mode": "lazy"}).encode()
         req = Request(
             f"http://localhost:{BUCKAROO_TEST_PORT}/load",
             data=payload,
@@ -174,7 +164,7 @@ class TestWebBuckarooIntegration:
         """Entry pages should return 200 (if entry exists) or 404, never 500."""
         # Test a known-missing entry
         try:
-            resp = urlopen(f"http://localhost:{WEB_TEST_PORT}/entry/no_such_entry", timeout=10)
+            urlopen(f"http://localhost:{WEB_TEST_PORT}/entry/no_such_entry", timeout=10)
             # If we get here, 200 is fine
         except HTTPError as e:
             assert e.code == 404, f"Expected 404 for missing entry, got {e.code}"

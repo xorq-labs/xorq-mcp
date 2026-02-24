@@ -6,8 +6,6 @@ headless browser.
 """
 
 import json
-import re
-import time
 from urllib.request import Request, urlopen
 
 import pytest
@@ -83,7 +81,7 @@ class TestBuckarooIframe:
         assert resp["session"] == "pw_session"
         assert resp["rows"] == 100
 
-        page.goto(buckaroo_url(f"/s/pw_session"))
+        page.goto(buckaroo_url("/s/pw_session"))
         page.wait_for_load_state("networkidle")
         # The page should have a root div and load standalone.js
         assert page.locator("#root").count() == 1
@@ -150,8 +148,7 @@ class TestSessionReload:
         # Reload same session with new data
         resp2 = _load_session(str(path2), "reload_test", BUCKAROO_TEST_PORT)
         assert resp2["rows"] == 50, (
-            f"Expected 50 rows after reload, got {resp2['rows']}. "
-            "Session data was not refreshed."
+            f"Expected 50 rows after reload, got {resp2['rows']}. Session data was not refreshed."
         )
 
     def test_rapid_session_creation(self, buckaroo_server, small_parquet):

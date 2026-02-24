@@ -163,9 +163,7 @@ class ExpressionDetailHandler(BaseHandler):
             )
 
         # Load lineage in executor (calls load_expr a second time)
-        lineage = await loop.run_in_executor(
-            None, functools.partial(load_lineage_html, build_dir)
-        )
+        lineage = await loop.run_in_executor(None, functools.partial(load_lineage_html, build_dir))
 
         self.render(
             "expression_detail.html",
@@ -243,9 +241,7 @@ class SessionExpressionDetailHandler(BaseHandler):
             )
 
         # Load lineage in executor (calls load_expr a second time)
-        lineage = await loop.run_in_executor(
-            None, functools.partial(load_lineage_html, build_dir)
-        )
+        lineage = await loop.run_in_executor(None, functools.partial(load_lineage_html, build_dir))
 
         # Build revision_metadata-like dict from session entry
         revision_metadata = {}

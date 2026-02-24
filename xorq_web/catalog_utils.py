@@ -59,8 +59,7 @@ def register_in_catalog(build_path, alias=None, metadata=None):
                 )
                 updated_entry = entry.evolve(history=updated_history)
                 updated_entries = tuple(
-                    updated_entry if e.entry_id == entry_id else e
-                    for e in updated_catalog.entries
+                    updated_entry if e.entry_id == entry_id else e for e in updated_catalog.entries
                 )
                 updated_catalog = updated_catalog.evolve(entries=updated_entries)
 
@@ -96,8 +95,6 @@ def update_revision_metadata(entry_id, revision_id, updates):
         updated_rev if r.revision_id == revision_id else r for r in entry.history
     )
     updated_entry = entry.evolve(history=updated_history)
-    updated_entries = tuple(
-        updated_entry if e.entry_id == entry_id else e for e in catalog.entries
-    )
+    updated_entries = tuple(updated_entry if e.entry_id == entry_id else e for e in catalog.entries)
     updated_catalog = catalog.evolve(entries=updated_entries)
     do_save_catalog(updated_catalog, paths.config_path)
