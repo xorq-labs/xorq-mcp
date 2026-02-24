@@ -91,6 +91,47 @@ class TestLoadLineageHtml:
 
 
 # -----------------------------------------------------------------------
+# metadata.py — load_lineage_html timeout
+# -----------------------------------------------------------------------
+class TestLoadLineageHtmlTimeout:
+    """load_lineage_html must not hang when build_column_trees is slow.
+
+    Reproduces the hang on complex multi-join expressions (e.g. good_deal_by_position)
+    where build_column_trees traverses a shared-subgraph expression DAG without
+    memoization, leading to exponential traversal time that never returns.
+    """
+
+    @patch("xorq.ibis_yaml.compiler.load_expr")
+    @patch("xorq.common.utils.lineage_utils.build_column_trees")
+    def test_returns_empty_dict_when_build_column_trees_hangs(
+        self, mock_trees, mock_load, tmp_path
+    ):
+        import threading
+
+        mock_load.return_value = MagicMock()
+        never_done = threading.Event()
+        mock_trees.side_effect = lambda expr: never_done.wait() or {}
+
+        result_box = {}
+
+        def _call():
+            result_box["value"] = load_lineage_html(tmp_path)
+
+        t = threading.Thread(target=_call, daemon=True)
+        t.start()
+        t.join(timeout=8.0)  # 5s internal timeout + 3s slack
+        never_done.set()  # release hanging mock thread
+
+        assert not t.is_alive(), (
+            "load_lineage_html is still running after 8s — "
+            "build_column_trees has no timeout"
+        )
+        assert result_box.get("value") == {}, (
+            f"Expected empty dict on timeout, got {result_box.get('value')!r}"
+        )
+
+
+# -----------------------------------------------------------------------
 # metadata.py — _render_node_html
 # -----------------------------------------------------------------------
 class TestRenderNodeHtml:
