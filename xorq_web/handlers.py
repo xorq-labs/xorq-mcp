@@ -26,6 +26,29 @@ log = logging.getLogger("xorq.web")
 RESULTS_DIR = Path(tempfile.gettempdir()) / "xorq_mcp_results"
 
 
+def _load_execute_and_register(
+    build_dir: Path,
+    build_id: str,
+    output_path: Path,
+    buckaroo_port: int,
+) -> None:
+    """Load, execute, and register an expression with Buckaroo in one thread.
+
+    Running load_expr → to_parquet → ensure_buckaroo_session as a single
+    unit in the executor guarantees that the expression object never crosses
+    a thread boundary between creation and materialisation (addresses the
+    cross-thread safety concern raised in PR #4 review).
+    """
+    from xorq.common.utils.caching_utils import get_xorq_cache_dir
+    from xorq.ibis_yaml.compiler import load_expr
+
+    cache_dir = get_xorq_cache_dir()
+    expr = load_expr(build_dir, cache_dir=cache_dir)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    expr.to_parquet(str(output_path))
+    ensure_buckaroo_session(str(output_path), build_id, buckaroo_port)
+
+
 class BaseHandler(tornado.web.RequestHandler):
     """Injects ``session_nav_entries`` into every template render."""
 
@@ -53,8 +76,6 @@ class CatalogIndexHandler(BaseHandler):
 class ExpressionDetailHandler(BaseHandler):
     async def get(self, target: str):
         from xorq.catalog import Target, load_catalog, resolve_build_dir
-        from xorq.common.utils.caching_utils import get_xorq_cache_dir
-        from xorq.ibis_yaml.compiler import load_expr
 
         loop = asyncio.get_running_loop()
         buckaroo_port = self.application.settings["buckaroo_port"]
@@ -118,23 +139,18 @@ class ExpressionDetailHandler(BaseHandler):
         # Load metadata
         metadata = load_build_metadata(build_dir)
 
-        # Execute to parquet and load into Buckaroo — run in executor so the
-        # IOLoop stays unblocked during expression execution and HTTP calls.
+        # Execute to parquet and load into Buckaroo — single executor task so
+        # load_expr, to_parquet, and ensure_buckaroo_session all run in the
+        # same thread (no expression object crossing thread boundaries).
         buckaroo_session = None
         buckaroo_error = None
+        output_path = RESULTS_DIR / f"{build_id}.parquet"
         try:
-            cache_dir = get_xorq_cache_dir()
-            expr = await loop.run_in_executor(
-                None, functools.partial(load_expr, build_dir, cache_dir=cache_dir)
-            )
-            RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-            output_path = RESULTS_DIR / f"{build_id}.parquet"
-            await loop.run_in_executor(
-                None, functools.partial(expr.to_parquet, str(output_path))
-            )
             await loop.run_in_executor(
                 None,
-                functools.partial(ensure_buckaroo_session, str(output_path), build_id, buckaroo_port),
+                functools.partial(
+                    _load_execute_and_register, build_dir, build_id, output_path, buckaroo_port
+                ),
             )
             buckaroo_session = build_id
         except Exception as exc:
@@ -180,9 +196,6 @@ class SessionExpressionDetailHandler(BaseHandler):
     """Render expression detail for a session-local (non-catalog) build."""
 
     async def get(self, name: str):
-        from xorq.common.utils.caching_utils import get_xorq_cache_dir
-        from xorq.ibis_yaml.compiler import load_expr
-
         from xorq_web.session_store import get_session_entry
 
         loop = asyncio.get_running_loop()
@@ -206,23 +219,18 @@ class SessionExpressionDetailHandler(BaseHandler):
         # Load metadata
         metadata = load_build_metadata(build_dir)
 
-        # Execute to parquet and load into Buckaroo — run in executor so the
-        # IOLoop stays unblocked during expression execution and HTTP calls.
+        # Execute to parquet and load into Buckaroo — single executor task so
+        # load_expr, to_parquet, and ensure_buckaroo_session all run in the
+        # same thread (no expression object crossing thread boundaries).
         buckaroo_session = None
         buckaroo_error = None
+        output_path = RESULTS_DIR / f"{build_id}.parquet"
         try:
-            cache_dir = get_xorq_cache_dir()
-            expr = await loop.run_in_executor(
-                None, functools.partial(load_expr, build_dir, cache_dir=cache_dir)
-            )
-            RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-            output_path = RESULTS_DIR / f"{build_id}.parquet"
-            await loop.run_in_executor(
-                None, functools.partial(expr.to_parquet, str(output_path))
-            )
             await loop.run_in_executor(
                 None,
-                functools.partial(ensure_buckaroo_session, str(output_path), build_id, buckaroo_port),
+                functools.partial(
+                    _load_execute_and_register, build_dir, build_id, output_path, buckaroo_port
+                ),
             )
             buckaroo_session = build_id
         except Exception as exc:
