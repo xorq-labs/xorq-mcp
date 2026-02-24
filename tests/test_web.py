@@ -1109,3 +1109,52 @@ class TestDiscardHandler(tornado.testing.AsyncHTTPTestCase):
         assert resp.code == 302
         assert resp.headers["Location"] == "/"
         mock_remove.assert_called_once_with("my_draft")
+
+
+# -----------------------------------------------------------------------
+# handlers.py — async handler properties
+# -----------------------------------------------------------------------
+class TestHandlersAreAsync:
+    """Verify that the detail handlers are coroutines (async def), not plain methods.
+
+    This is the regression guard for GitHub issue #1: blocking I/O in synchronous
+    Tornado handlers caused the server to hang while executing expressions.
+    """
+
+    def test_expression_detail_handler_is_async(self):
+        import asyncio
+
+        from xorq_web.handlers import ExpressionDetailHandler
+
+        assert asyncio.iscoroutinefunction(ExpressionDetailHandler.get)
+
+    def test_session_expression_detail_handler_is_async(self):
+        import asyncio
+
+        from xorq_web.handlers import SessionExpressionDetailHandler
+
+        assert asyncio.iscoroutinefunction(SessionExpressionDetailHandler.get)
+
+
+class TestQueryParamPassthrough(tornado.testing.AsyncHTTPTestCase):
+    """Verify that unknown query params (e.g. ?s=SESSION_ID) are silently ignored.
+
+    The xorq-mcp browser focus feature (issue #3) appends ?s=<session_id> to
+    all web URLs. The server must serve normal responses regardless.
+    """
+
+    def get_app(self):
+        return make_app(buckaroo_port=8455)
+
+    def test_health_ignores_query_param(self):
+        resp = self.fetch("/health?s=abc123")
+        assert resp.code == 200
+        body = resp.json() if hasattr(resp, "json") else __import__("json").loads(resp.body)
+        assert body["status"] == "ok"
+
+    @patch("xorq_web.handlers.get_session_entries", return_value=[])
+    @patch("xorq_web.handlers.get_all_entries", return_value=[])
+    @patch("xorq_web.handlers.get_catalog_entries", return_value=[])
+    def test_catalog_index_ignores_query_param(self, mock_entries, mock_all, mock_session):
+        resp = self.fetch("/?s=abc123")
+        assert resp.code == 200

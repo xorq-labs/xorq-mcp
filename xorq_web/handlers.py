@@ -1,5 +1,7 @@
 """Tornado request handlers for the xorq web server."""
 
+import asyncio
+import functools
 import logging
 import os
 import tempfile
@@ -49,11 +51,12 @@ class CatalogIndexHandler(BaseHandler):
 
 
 class ExpressionDetailHandler(BaseHandler):
-    def get(self, target: str):
+    async def get(self, target: str):
         from xorq.catalog import Target, load_catalog, resolve_build_dir
         from xorq.common.utils.caching_utils import get_xorq_cache_dir
         from xorq.ibis_yaml.compiler import load_expr
 
+        loop = asyncio.get_running_loop()
         buckaroo_port = self.application.settings["buckaroo_port"]
         nav_entries = get_catalog_entries()
 
@@ -115,16 +118,24 @@ class ExpressionDetailHandler(BaseHandler):
         # Load metadata
         metadata = load_build_metadata(build_dir)
 
-        # Execute to parquet and load into Buckaroo
+        # Execute to parquet and load into Buckaroo — run in executor so the
+        # IOLoop stays unblocked during expression execution and HTTP calls.
         buckaroo_session = None
         buckaroo_error = None
         try:
             cache_dir = get_xorq_cache_dir()
-            expr = load_expr(build_dir, cache_dir=cache_dir)
+            expr = await loop.run_in_executor(
+                None, functools.partial(load_expr, build_dir, cache_dir=cache_dir)
+            )
             RESULTS_DIR.mkdir(parents=True, exist_ok=True)
             output_path = RESULTS_DIR / f"{build_id}.parquet"
-            expr.to_parquet(str(output_path))
-            ensure_buckaroo_session(str(output_path), build_id, buckaroo_port)
+            await loop.run_in_executor(
+                None, functools.partial(expr.to_parquet, str(output_path))
+            )
+            await loop.run_in_executor(
+                None,
+                functools.partial(ensure_buckaroo_session, str(output_path), build_id, buckaroo_port),
+            )
             buckaroo_session = build_id
         except Exception as exc:
             buckaroo_error = str(exc)
@@ -135,8 +146,10 @@ class ExpressionDetailHandler(BaseHandler):
                 traceback.format_exc(),
             )
 
-        # Load lineage
-        lineage = load_lineage_html(build_dir)
+        # Load lineage in executor (calls load_expr a second time)
+        lineage = await loop.run_in_executor(
+            None, functools.partial(load_lineage_html, build_dir)
+        )
 
         self.render(
             "expression_detail.html",
@@ -166,12 +179,13 @@ class ExpressionDetailHandler(BaseHandler):
 class SessionExpressionDetailHandler(BaseHandler):
     """Render expression detail for a session-local (non-catalog) build."""
 
-    def get(self, name: str):
+    async def get(self, name: str):
         from xorq.common.utils.caching_utils import get_xorq_cache_dir
         from xorq.ibis_yaml.compiler import load_expr
 
         from xorq_web.session_store import get_session_entry
 
+        loop = asyncio.get_running_loop()
         buckaroo_port = self.application.settings["buckaroo_port"]
         nav_entries = get_catalog_entries()
 
@@ -192,16 +206,24 @@ class SessionExpressionDetailHandler(BaseHandler):
         # Load metadata
         metadata = load_build_metadata(build_dir)
 
-        # Execute to parquet and load into Buckaroo
+        # Execute to parquet and load into Buckaroo — run in executor so the
+        # IOLoop stays unblocked during expression execution and HTTP calls.
         buckaroo_session = None
         buckaroo_error = None
         try:
             cache_dir = get_xorq_cache_dir()
-            expr = load_expr(build_dir, cache_dir=cache_dir)
+            expr = await loop.run_in_executor(
+                None, functools.partial(load_expr, build_dir, cache_dir=cache_dir)
+            )
             RESULTS_DIR.mkdir(parents=True, exist_ok=True)
             output_path = RESULTS_DIR / f"{build_id}.parquet"
-            expr.to_parquet(str(output_path))
-            ensure_buckaroo_session(str(output_path), build_id, buckaroo_port)
+            await loop.run_in_executor(
+                None, functools.partial(expr.to_parquet, str(output_path))
+            )
+            await loop.run_in_executor(
+                None,
+                functools.partial(ensure_buckaroo_session, str(output_path), build_id, buckaroo_port),
+            )
             buckaroo_session = build_id
         except Exception as exc:
             buckaroo_error = str(exc)
@@ -212,8 +234,10 @@ class SessionExpressionDetailHandler(BaseHandler):
                 traceback.format_exc(),
             )
 
-        # Load lineage
-        lineage = load_lineage_html(build_dir)
+        # Load lineage in executor (calls load_expr a second time)
+        lineage = await loop.run_in_executor(
+            None, functools.partial(load_lineage_html, build_dir)
+        )
 
         # Build revision_metadata-like dict from session entry
         revision_metadata = {}
