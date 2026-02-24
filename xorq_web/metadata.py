@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import threading
 from pathlib import Path
 from urllib.request import Request, urlopen
 
@@ -45,15 +46,41 @@ def load_lineage_html(build_dir: Path) -> dict[str, str]:
     """Build column lineage trees and render each as nested HTML.
 
     Returns dict mapping column name to HTML string of <ul>/<li> tree.
-    Returns empty dict if lineage cannot be computed.
+    Returns empty dict if lineage cannot be computed or times out.
+
+    build_column_trees has no memoization and can loop for an effectively
+    infinite time on complex multi-join expression graphs.  We run it in a
+    daemon thread and abandon it after 5 s so the page always loads.
     """
     try:
         from xorq.common.utils.lineage_utils import build_column_trees
         from xorq.ibis_yaml.compiler import load_expr
 
         expr = load_expr(build_dir)
-        trees = build_column_trees(expr)
-        return {col: _render_node_html(node) for col, node in trees.items()}
+
+        result: dict = {}
+        exc_holder: list = []
+
+        def _run() -> None:
+            try:
+                result["trees"] = build_column_trees(expr)
+            except Exception as e:  # noqa: BLE001
+                exc_holder.append(e)
+
+        t = threading.Thread(target=_run, daemon=True)
+        t.start()
+        t.join(timeout=5.0)
+
+        if t.is_alive():
+            log.warning(
+                "build_column_trees timed out for %s — skipping lineage", build_dir
+            )
+            return {}
+
+        if exc_holder:
+            raise exc_holder[0]
+
+        return {col: _render_node_html(node) for col, node in result["trees"].items()}
     except Exception as exc:
         log.warning("Failed to build lineage from %s: %s", build_dir, exc)
         return {}
