@@ -460,7 +460,8 @@ mcp = FastMCP(
         "Use xorq_view_build to view a previously-built expression from the catalog. "
         "Use view_data to display raw data files (CSV, Parquet, etc.) interactively. "
         "Use xorq_catalog_ls, xorq_catalog_info, xorq_lineage, and xorq_diff_builds "
-        "for catalog navigation, lineage inspection, and build comparison."
+        "for catalog navigation, lineage inspection, and build comparison. "
+        "Use xorq_doctor to diagnose catalog issues; pass fix=True to auto-repair."
     ),
 )
 
@@ -648,30 +649,28 @@ def xorq_view_build(target: str) -> str:
     Args:
         target: Build directory path, catalog alias, or entry_id[@revision].
     """
-    from xorq.catalog import load_catalog, resolve_build_dir
-    from xorq.common.utils.caching_utils import get_xorq_cache_dir
-    from xorq.ibis_yaml.compiler import load_expr
+    from xorq.catalog import load_expr_from_tgz
+
+    from xorq_web.catalog_utils import CatalogSnapshot, resolve_target
 
     log.info("xorq_view_build called — target=%s", target)
 
-    catalog = load_catalog()
-    build_dir = resolve_build_dir(target, catalog)
-    if build_dir is None:
+    snapshot = CatalogSnapshot()
+    entry = resolve_target(target, snapshot)
+    if entry is None:
         return f"Error: build target not found: {target}"
-    if not build_dir.exists() or not build_dir.is_dir():
-        return f"Error: build directory not found: {build_dir}"
+    if not entry.exists():
+        return f"Error: catalog entry not found: {entry.name}"
 
-    # Load expression
-    cache_dir = get_xorq_cache_dir()
+    # Load expression from tgz
     try:
-        expr = load_expr(build_dir, cache_dir=cache_dir)
+        expr = load_expr_from_tgz(entry.catalog_path)
     except Exception as exc:
-        log.error("load_expr failed: %s\n%s", exc, traceback.format_exc())
-        return f"Error loading expression from {build_dir}: {exc}"
+        log.error("load_expr_from_tgz failed: %s\n%s", exc, traceback.format_exc())
+        return f"Error loading expression for {target}: {exc}"
 
     # Execute to parquet
-    build_hash = build_dir.name
-    output_path = RESULTS_DIR / f"{build_hash}.parquet"
+    output_path = RESULTS_DIR / f"{entry.name}.parquet"
     try:
         expr.to_parquet(str(output_path))
     except Exception as exc:
@@ -683,7 +682,8 @@ def xorq_view_build(target: str) -> str:
     # Open in xorq web UI
     ensure_server()
     ensure_web_server()
-    web_url = f"{WEB_URL}/entry/{target}"
+    display_name = snapshot.display_name_for(entry.name)
+    web_url = f"{WEB_URL}/entry/{display_name}"
     _open_browser(web_url)
     log.info("Opened web UI: %s", web_url)
 
@@ -728,42 +728,25 @@ def xorq_catalog_ls() -> str:
     Returns a formatted listing and opens an HTML page in the browser with
     links to Buckaroo detail views for each catalog entry.
     """
-    from xorq.catalog import load_catalog
+    from xorq_web.catalog_utils import CatalogSnapshot
 
     log.info("xorq_catalog_ls called")
 
-    catalog = load_catalog()
+    snapshot = CatalogSnapshot()
 
-    if not catalog.entries:
+    if not snapshot.entries:
         return "Catalog is empty."
 
-    # Build alias lookup: entry_id -> list of alias names
-    alias_lookup: dict[str, list[str]] = {}
-    if catalog.aliases:
-        for name, alias in catalog.aliases.items():
-            alias_lookup.setdefault(alias.entry_id, []).append(name)
-
     entry_rows = []
-    for entry in catalog.entries:
-        curr_rev = entry.current_revision
-        build_id = None
-        created_at = None
-        for rev in entry.history:
-            if rev.revision_id == curr_rev and rev.build:
-                build_id = rev.build.build_id
-                created_at = str(rev.created_at) if rev.created_at else None
-                break
-
-        aliases = alias_lookup.get(entry.entry_id, [])
-        display_name = aliases[0] if aliases else entry.entry_id[:12]
+    for entry in snapshot.entries:
+        aliases = snapshot.aliases_for(entry.name)
+        display_name = snapshot.display_name_for(entry.name)
         entry_rows.append(
             {
                 "display_name": display_name,
                 "aliases": aliases,
-                "entry_id": entry.entry_id,
-                "revision": curr_rev,
-                "build_id": build_id,
-                "created_at": created_at,
+                "entry_id": entry.name,
+                "build_id": entry.name,
             }
         )
 
@@ -777,7 +760,7 @@ def xorq_catalog_ls() -> str:
     # Return text summary
     lines = [f"Opened catalog page with {len(entry_rows)} entries\n"]
     for row in entry_rows:
-        lines.append(f"  {row['display_name']}  {row['revision']}  build={row['build_id']}")
+        lines.append(f"  {row['display_name']}  build={row['build_id']}")
 
     return "\n".join(lines)
 
@@ -794,48 +777,58 @@ def xorq_catalog_info(target: str) -> str:
     Args:
         target: Catalog alias or entry_id[@revision].
     """
-    from xorq.catalog import load_catalog, resolve_build_dir
-    from xorq.ibis_yaml.compiler import load_expr
+    from xorq.catalog import load_expr_from_tgz
+
+    from xorq_web.catalog_utils import (
+        CatalogSnapshot,
+        _read_entry_metadata,
+        resolve_target,
+    )
 
     log.info("xorq_catalog_info called — target=%s", target)
 
-    catalog = load_catalog()
-
-    # Resolve the target to find entry + revision info
-    resolved = catalog.resolve_target(target)
-    if resolved is None:
+    snapshot = CatalogSnapshot()
+    entry = resolve_target(target, snapshot)
+    if entry is None:
         return f"Target not found: {target}"
 
-    entry = catalog.maybe_get_entry(resolved.entry_id)
-    if entry is None:
-        return f"Entry not found: {resolved.entry_id}"
+    aliases = snapshot.aliases_for(entry.name)
+    display_name = snapshot.display_name_for(entry.name)
 
-    lines = [f"## Entry: {entry.entry_id}"]
-    lines.append(f"Current revision: {entry.current_revision}")
-    if resolved.alias:
+    lines = [f"## Entry: {entry.name}"]
+    if aliases:
+        lines.append(f"Aliases: {', '.join(aliases)}")
+    if display_name != entry.name:
         lines.append(f"Resolved via alias: {target}")
 
-    lines.append(f"\n### Revision history ({len(entry.history)} revisions)")
-    for rev in entry.history:
-        build_info = ""
-        if rev.build:
-            build_info = f"  build={rev.build.build_id}"
-            if rev.build.path:
-                build_info += f"  path={rev.build.path}"
-        lines.append(f"  {rev.revision_id}  created={rev.created_at}{build_info}")
-
-    # Try to show schema from the current build
-    build_dir = resolve_build_dir(target, catalog)
-    if build_dir and build_dir.exists():
+    # Revision history from alias
+    alias_objs = entry.aliases
+    if alias_objs:
         try:
-            expr = load_expr(build_dir)
-            if hasattr(expr, "schema"):
-                schema = expr.schema()
-                lines.append("\n### Schema")
-                for col_name, col_type in zip(schema.names, schema.types):
-                    lines.append(f"  {col_name}: {col_type}")
+            revisions = alias_objs[0].list_revisions()
+            lines.append(f"\n### Revision history ({len(revisions)} revisions)")
+            for rev_entry, commit in revisions:
+                lines.append(f"  {commit.hexsha[:12]}  created={commit.authored_datetime}")
         except Exception as exc:
-            lines.append(f"\n(Could not load schema: {exc})")
+            lines.append(f"\n(Could not load revision history: {exc})")
+
+    # Metadata
+    meta = _read_entry_metadata(entry)
+    if meta:
+        lines.append("\n### Metadata")
+        for k, v in meta.items():
+            lines.append(f"  {k}: {v}")
+
+    # Try to show schema
+    try:
+        expr = load_expr_from_tgz(entry.catalog_path)
+        if hasattr(expr, "schema"):
+            schema = expr.schema()
+            lines.append("\n### Schema")
+            for col_name, col_type in zip(schema.names, schema.types):
+                lines.append(f"  {col_name}: {col_type}")
+    except Exception as exc:
+        lines.append(f"\n(Could not load schema: {exc})")
 
     return "\n".join(lines)
 
@@ -853,21 +846,22 @@ def xorq_lineage(target: str, column: str = "") -> str:
         target: Build directory path, catalog alias, or entry_id[@revision].
         column: Optional specific column name. If empty, shows all columns.
     """
-    from xorq.catalog import load_catalog, resolve_build_dir
+    from xorq.catalog import load_expr_from_tgz
     from xorq.common.utils.lineage_utils import build_column_trees
-    from xorq.ibis_yaml.compiler import load_expr
+
+    from xorq_web.catalog_utils import CatalogSnapshot, resolve_target
 
     log.info("xorq_lineage called — target=%s column=%s", target, column)
 
-    catalog = load_catalog()
-    build_dir = resolve_build_dir(target, catalog)
-    if build_dir is None:
+    snapshot = CatalogSnapshot()
+    entry = resolve_target(target, snapshot)
+    if entry is None:
         return f"Error: build target not found: {target}"
-    if not build_dir.exists() or not build_dir.is_dir():
-        return f"Error: build directory not found: {build_dir}"
+    if not entry.exists():
+        return f"Error: catalog entry not found: {entry.name}"
 
     try:
-        expr = load_expr(build_dir)
+        expr = load_expr_from_tgz(entry.catalog_path)
     except Exception as exc:
         return f"Error loading expression: {exc}"
 
@@ -916,47 +910,151 @@ def xorq_diff_builds(left: str, right: str) -> str:
         left: First build target (path, alias, or entry@revision).
         right: Second build target (path, alias, or entry@revision).
     """
-    from xorq.catalog import load_catalog, resolve_build_dir
+    from xorq.catalog.tar_utils import extract_build_tgz_context
+
+    from xorq_web.catalog_utils import CatalogSnapshot, resolve_target
 
     log.info("xorq_diff_builds called — left=%s right=%s", left, right)
 
-    catalog = load_catalog()
-    left_dir = resolve_build_dir(left, catalog)
-    right_dir = resolve_build_dir(right, catalog)
+    snapshot = CatalogSnapshot()
+    left_entry = resolve_target(left, snapshot)
+    right_entry = resolve_target(right, snapshot)
 
-    if left_dir is None:
+    if left_entry is None:
         return f"Error: build target not found: {left}"
-    if right_dir is None:
+    if right_entry is None:
         return f"Error: build target not found: {right}"
-    if not left_dir.exists() or not left_dir.is_dir():
-        return f"Error: build directory not found: {left_dir}"
-    if not right_dir.exists() or not right_dir.is_dir():
-        return f"Error: build directory not found: {right_dir}"
+    if not left_entry.exists():
+        return f"Error: catalog entry not found: {left_entry.name}"
+    if not right_entry.exists():
+        return f"Error: catalog entry not found: {right_entry.name}"
 
-    left_expr = left_dir / "expr.yaml"
-    right_expr = right_dir / "expr.yaml"
+    # Extract both tgz files — nested context managers
+    with extract_build_tgz_context(left_entry.catalog_path) as left_dir:
+        with extract_build_tgz_context(right_entry.catalog_path) as right_dir:
+            left_expr = left_dir / "expr.yaml"
+            right_expr = right_dir / "expr.yaml"
 
-    if not left_expr.exists():
-        return f"Error: expr.yaml not found in {left_dir}"
-    if not right_expr.exists():
-        return f"Error: expr.yaml not found in {right_dir}"
+            if not left_expr.exists():
+                return f"Error: expr.yaml not found in {left_dir}"
+            if not right_expr.exists():
+                return f"Error: expr.yaml not found in {right_dir}"
 
-    try:
-        result = subprocess.run(
-            ["git", "diff", "--no-index", "--", str(left_expr), str(right_expr)],
-            capture_output=True,
-            text=True,
+            try:
+                result = subprocess.run(
+                    ["git", "diff", "--no-index", "--", str(left_expr), str(right_expr)],
+                    capture_output=True,
+                    text=True,
+                )
+                diff_output = result.stdout
+            except FileNotFoundError:
+                return "Error: git command not found. git is required for diff."
+
+            if result.returncode == 0:
+                return (
+                    f"No differences between builds.\n"
+                    f"  left:  {left_entry.name}\n  right: {right_entry.name}"
+                )
+
+            return (
+                f"## Diff: expr.yaml\n"
+                f"left:  {left_entry.name}\nright: {right_entry.name}\n\n"
+                f"```diff\n{diff_output}\n```"
+            )
+
+
+# ---------------------------------------------------------------------------
+# Tool 8: xorq_doctor
+# ---------------------------------------------------------------------------
+@mcp.tool()
+def xorq_doctor(fix: bool = False) -> str:
+    """Diagnose catalog health, server reachability, and environment info.
+
+    Returns a markdown report. Pass fix=True to attempt automatic repair
+    when a catalog desync is detected.
+
+    Args:
+        fix: If True and a desync is detected, rebuild catalog.yaml automatically.
+    """
+    from xorq_web.catalog_utils import catalog_health_check, repair_catalog_yaml
+
+    log.info("xorq_doctor called — fix=%s", fix)
+
+    lines = ["# xorq doctor\n"]
+
+    # --- Catalog ---
+    report = catalog_health_check()
+    status = "OK" if report.healthy else "UNHEALTHY"
+    lines.append(f"## Catalog: {status}\n")
+    lines.append(f"- Path: `{report.repo_path or 'not found'}`")
+    lines.append(f"- catalog.yaml: {'exists' if report.catalog_yaml_exists else 'missing'}")
+    lines.append(f"- YAML entries/aliases: {report.yaml_entry_count} / {report.yaml_alias_count}")
+    lines.append(f"- Filesystem entries/aliases: {report.fs_entry_count} / {report.fs_alias_count}")
+    if report.is_desync:
+        lines.append("\n**Desync detected.**")
+        if report.missing_from_yaml:
+            lines.append(
+                f"- Missing from YAML ({len(report.missing_from_yaml)}): "
+                f"{', '.join(report.missing_from_yaml[:10])}"
+                f"{'...' if len(report.missing_from_yaml) > 10 else ''}"
+            )
+        if report.extra_in_yaml:
+            lines.append(
+                f"- Extra in YAML ({len(report.extra_in_yaml)}): "
+                f"{', '.join(report.extra_in_yaml[:10])}"
+                f"{'...' if len(report.extra_in_yaml) > 10 else ''}"
+            )
+    if not report.healthy:
+        lines.append(f"\nError: {report.error_type}: {report.error_message}")
+
+    # --- Repair ---
+    if fix and report.is_desync:
+        lines.append("\n## Repair\n")
+        try:
+            result = repair_catalog_yaml()
+            lines.append(result)
+            # Re-check after repair
+            post = catalog_health_check()
+            lines.append(f"\nPost-repair status: {'OK' if post.healthy else 'still unhealthy'}")
+        except Exception as exc:
+            lines.append(f"Repair failed: {exc}")
+    elif fix and not report.is_desync:
+        lines.append("\n## Repair\n")
+        lines.append("No desync detected — nothing to repair.")
+
+    # --- Servers ---
+    lines.append("\n## Servers\n")
+
+    buckaroo_health = _health_check()
+    if buckaroo_health:
+        lines.append(
+            f"- Buckaroo ({SERVER_URL}): OK "
+            f"(pid={buckaroo_health.get('pid')}, "
+            f"uptime={buckaroo_health.get('uptime_s', 0):.0f}s)"
         )
-        diff_output = result.stdout
-    except FileNotFoundError:
-        return "Error: git command not found. git is required for diff."
+    else:
+        lines.append(f"- Buckaroo ({SERVER_URL}): not reachable")
 
-    if result.returncode == 0:
-        return f"No differences between builds.\n  left:  {left_dir}\n  right: {right_dir}"
+    web_health = _web_health_check()
+    if web_health:
+        lines.append(f"- Web ({WEB_URL}): OK (pid={web_health.get('pid')})")
+    else:
+        lines.append(f"- Web ({WEB_URL}): not reachable")
 
-    return (
-        f"## Diff: expr.yaml\nleft:  {left_dir}\nright: {right_dir}\n\n```diff\n{diff_output}\n```"
-    )
+    # --- Environment ---
+    lines.append("\n## Environment\n")
+    lines.append(f"- Python: {report.python_version}")
+    lines.append(f"- xorq: {report.xorq_version}")
+    try:
+        import xorq_web
+
+        mcp_version = getattr(xorq_web, "__version__", "dev")
+    except Exception:
+        mcp_version = "unknown"
+    lines.append(f"- xorq-mcp: {mcp_version}")
+    lines.append(f"- Log dir: `{LOG_DIR}`")
+
+    return "\n".join(lines)
 
 
 # ===========================================================================

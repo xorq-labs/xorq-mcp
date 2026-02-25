@@ -10,6 +10,12 @@ from pathlib import Path
 
 import tornado.web
 
+from xorq_web.catalog_utils import (
+    CatalogSnapshot,
+    _read_entry_metadata,
+    catalog_health_check,
+    resolve_target,
+)
 from xorq_web.metadata import (
     ensure_buckaroo_session,
     get_all_entries,
@@ -50,20 +56,58 @@ def _load_execute_and_register(
 
 
 class BaseHandler(tornado.web.RequestHandler):
-    """Injects ``session_nav_entries`` into every template render."""
+    """Injects ``session_nav_entries`` into every template render.
+
+    Overrides ``write_error`` to render a branded error page with catalog
+    diagnostics when a 500 occurs, and guards ``get_template_namespace``
+    against double-faults from a broken session store.
+    """
 
     def get_template_namespace(self):
         ns = super().get_template_namespace()
-        ns["session_nav_entries"] = get_session_entries()
+        try:
+            ns["session_nav_entries"] = get_session_entries()
+        except Exception:
+            ns["session_nav_entries"] = []
         return ns
+
+    def write_error(self, status_code, **kwargs):
+        if status_code < 500:
+            super().write_error(status_code, **kwargs)
+            return
+
+        report = None
+        try:
+            report = catalog_health_check()
+        except Exception:
+            pass
+
+        try:
+            self.render(
+                "error.html",
+                nav_entries=[],
+                current_entry="__error__",
+                status_code=status_code,
+                report=report,
+            )
+        except Exception:
+            # Template rendering itself failed — plain text fallback
+            self.set_header("Content-Type", "text/plain")
+            msg = f"HTTP {status_code} — Internal Server Error\n"
+            if report:
+                msg += f"\n{report.summary}\n"
+                if report.repair_hint:
+                    msg += f"\nRepair: {report.repair_hint}\n"
+            self.finish(msg)
 
 
 class CatalogIndexHandler(BaseHandler):
     def get(self):
-        all_entries = get_all_entries()
+        snapshot = CatalogSnapshot()
+        all_entries = get_all_entries(snapshot)
         catalog_entries = [e for e in all_entries if e.get("source") == "catalog"]
         session_entries = [e for e in all_entries if e.get("source") == "session"]
-        nav_entries = get_catalog_entries()
+        nav_entries = get_catalog_entries(snapshot)
         self.render(
             "catalog_index.html",
             entries=catalog_entries,
@@ -75,51 +119,40 @@ class CatalogIndexHandler(BaseHandler):
 
 class ExpressionDetailHandler(BaseHandler):
     async def get(self, target: str):
-        from xorq.catalog import Target, load_catalog, resolve_build_dir
+        from xorq.catalog.tar_utils import extract_build_tgz_context
 
         loop = asyncio.get_running_loop()
         buckaroo_port = self.application.settings["buckaroo_port"]
-        nav_entries = get_catalog_entries()
 
-        catalog = load_catalog()
-        build_dir = resolve_build_dir(target, catalog)
-        if build_dir is None or not build_dir.exists():
+        snapshot = CatalogSnapshot()
+        nav_entries = get_catalog_entries(snapshot)
+
+        entry = resolve_target(target, snapshot)
+        if entry is None or not entry.exists():
             self.set_status(404)
             self.write(f"Build target not found: {target}")
             return
 
-        # Parse base name (strip @rN) for display and revision nav links
-        base_name = target.split("@")[0]
+        display_name = snapshot.display_name_for(entry.name)
+        build_id = entry.name
+        revision_metadata = _read_entry_metadata(entry)
 
-        # Resolve the target to get the actual revision being viewed
-        resolved = Target.from_str(target, catalog)
-        current_rev_id = resolved.rev if resolved else None
-
-        # Find the matching catalog entry for display info
-        display_name = base_name
-        revision = current_rev_id
-        build_id = build_dir.name
+        # Get revision info from alias history
+        current_rev_id = None
         created_at = None
-        for e in nav_entries:
-            if e["display_name"] == base_name or e["entry_id"] == base_name:
-                display_name = e["display_name"]
-                build_id = e["build_id"] or build_dir.name
-                break
-
-        # Look up created_at and metadata from the specific revision
-        revision_metadata = None
-        if resolved:
-            entry = catalog.maybe_get_entry(resolved.entry_id)
-            if entry:
-                rev_obj = entry.maybe_get_revision(current_rev_id)
-                if rev_obj:
-                    created_at = str(rev_obj.created_at) if rev_obj.created_at else None
-                    if rev_obj.build:
-                        build_id = rev_obj.build.build_id
-                    revision_metadata = rev_obj.metadata
+        aliases = entry.aliases
+        if aliases:
+            try:
+                revisions_list = aliases[0].list_revisions()
+                if revisions_list:
+                    _, latest_commit = revisions_list[-1]
+                    current_rev_id = latest_commit.hexsha[:12]
+                    created_at = str(latest_commit.authored_datetime)
+            except Exception:
+                pass
 
         # Compute revision navigation
-        revisions = get_entry_revisions(target)
+        revisions = get_entry_revisions(target, snapshot)
         prev_url = None
         next_url = None
         prev_rev_id = None
@@ -136,41 +169,43 @@ class ExpressionDetailHandler(BaseHandler):
                 next_rev_id = revisions[current_idx + 1]["revision_id"]
                 next_url = f"/entry/{display_name}@{next_rev_id}"
 
-        # Load metadata
-        metadata = load_build_metadata(build_dir)
+        # Extract build dir from tgz — all build-dir work runs inside this context
+        with extract_build_tgz_context(entry.catalog_path) as build_dir:
+            # Load metadata
+            metadata = load_build_metadata(build_dir)
 
-        # Execute to parquet and load into Buckaroo — single executor task so
-        # load_expr, to_parquet, and ensure_buckaroo_session all run in the
-        # same thread (no expression object crossing thread boundaries).
-        buckaroo_session = None
-        buckaroo_error = None
-        output_path = RESULTS_DIR / f"{build_id}.parquet"
-        try:
-            await loop.run_in_executor(
-                None,
-                functools.partial(
-                    _load_execute_and_register, build_dir, build_id, output_path, buckaroo_port
-                ),
-            )
-            buckaroo_session = build_id
-        except Exception as exc:
-            buckaroo_error = str(exc)
-            log.error(
-                "Failed to load expression for %s: %s\n%s",
-                target,
-                exc,
-                traceback.format_exc(),
-            )
+            # Execute to parquet and load into Buckaroo
+            buckaroo_session = None
+            buckaroo_error = None
+            output_path = RESULTS_DIR / f"{build_id}.parquet"
+            try:
+                await loop.run_in_executor(
+                    None,
+                    functools.partial(
+                        _load_execute_and_register, build_dir, build_id, output_path, buckaroo_port
+                    ),
+                )
+                buckaroo_session = build_id
+            except Exception as exc:
+                buckaroo_error = str(exc)
+                log.error(
+                    "Failed to load expression for %s: %s\n%s",
+                    target,
+                    exc,
+                    traceback.format_exc(),
+                )
 
-        # Load lineage in executor (calls load_expr a second time)
-        lineage = await loop.run_in_executor(None, functools.partial(load_lineage_html, build_dir))
+            # Load lineage in executor
+            lineage = await loop.run_in_executor(
+                None, functools.partial(load_lineage_html, build_dir)
+            )
 
         self.render(
             "expression_detail.html",
             nav_entries=nav_entries,
             current_entry=display_name,
             display_name=display_name,
-            revision=revision,
+            revision=current_rev_id,
             build_id=build_id,
             created_at=created_at,
             metadata=metadata,
@@ -184,7 +219,7 @@ class ExpressionDetailHandler(BaseHandler):
             next_url=next_url,
             prev_rev_id=prev_rev_id,
             next_rev_id=next_rev_id,
-            revision_metadata=revision_metadata,
+            revision_metadata=revision_metadata or None,
             is_session=False,
             session_name=None,
         )
@@ -198,7 +233,9 @@ class SessionExpressionDetailHandler(BaseHandler):
 
         loop = asyncio.get_running_loop()
         buckaroo_port = self.application.settings["buckaroo_port"]
-        nav_entries = get_catalog_entries()
+
+        snapshot = CatalogSnapshot()
+        nav_entries = get_catalog_entries(snapshot)
 
         entry = get_session_entry(name)
         if entry is None:
@@ -319,8 +356,9 @@ class DiscardHandler(BaseHandler):
 
 class RunsHandler(BaseHandler):
     def get(self):
-        nav_entries = get_catalog_entries()
-        runs = get_all_runs_merged()
+        snapshot = CatalogSnapshot()
+        nav_entries = get_catalog_entries(snapshot)
+        runs = get_all_runs_merged(snapshot)
         self.render(
             "runs.html",
             nav_entries=nav_entries,

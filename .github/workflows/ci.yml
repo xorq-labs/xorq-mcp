@@ -6,7 +6,115 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Patch version for TestPyPI
+        if: github.event_name == 'pull_request'
+        run: |
+          BASE=$(grep -Po '^version = "\K[^"]+' pyproject.toml)
+          DEV="${BASE}.dev${{ github.run_id }}"
+          sed -i "s/^version = \".*\"/version = \"${DEV}\"/" pyproject.toml
+          echo "Published version: ${DEV}"
+
+      - name: Build wheel
+        run: uv build --wheel
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: xorq-mcp-dist
+          path: dist/
+
+  publish-testpypi:
+    name: Publish to TestPyPI
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    needs: [build, test, lint]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: testpypi
+    permissions:
+      id-token: write
+      pull-requests: write
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: xorq-mcp-dist
+          path: dist/
+
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          packages-dir: dist/
+
+      - name: Comment on PR with install command
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const distFiles = fs.readdirSync('dist');
+            const wheel = distFiles.find(f => f.endsWith('.whl'));
+            const version = wheel.match(/xorq_mcp-(.+?)-/)[1];
+            const idx = `--index-strategy unsafe-best-match --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/`;
+            const body = [
+              '## :package: TestPyPI package published',
+              '',
+              '```bash',
+              `uv pip install ${idx} xorq-mcp==${version}`,
+              '```',
+              '',
+              '### MCP server for Claude Code',
+              '',
+              '```bash',
+              `claude mcp add xorq -- uvx --from "xorq-mcp==${version}" ${idx} xorq-mcp`,
+              '```',
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const marker = '## :package: TestPyPI package published';
+            const existing = comments.find(c => c.body.startsWith(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
   test:
     runs-on: ubuntu-latest
     strategy:

@@ -11,6 +11,7 @@ dependencies = [
     "xorq>=0.3.8",
     "buckaroo[mcp]>=0.12.9",
     "tornado>=6.0",
+    "scipy>=1.17.1",
 ]
 
 [project.optional-dependencies]
@@ -45,6 +46,9 @@ skip_glob = ["examples/*"]
 [tool.hatch.build.targets.wheel]
 packages = [".", "xorq_web"]
 only-include = ["xorq_mcp_tool.py", "xorq_web"]
+
+[tool.uv.sources]
+xorq = { path = "../xorq/dist/xorq-0.3.11-py3-none-any.whl" }
 
 [project.scripts]
 xorq-mcp = "xorq_mcp_tool:main"

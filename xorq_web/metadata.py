@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import threading
 from pathlib import Path
 from urllib.request import Request, urlopen
 
@@ -45,15 +46,39 @@ def load_lineage_html(build_dir: Path) -> dict[str, str]:
     """Build column lineage trees and render each as nested HTML.
 
     Returns dict mapping column name to HTML string of <ul>/<li> tree.
-    Returns empty dict if lineage cannot be computed.
+    Returns empty dict if lineage cannot be computed or times out.
+
+    build_column_trees has no memoization and can loop for an effectively
+    infinite time on complex multi-join expression graphs.  We run it in a
+    daemon thread and abandon it after 5 s so the page always loads.
     """
     try:
         from xorq.common.utils.lineage_utils import build_column_trees
         from xorq.ibis_yaml.compiler import load_expr
 
         expr = load_expr(build_dir)
-        trees = build_column_trees(expr)
-        return {col: _render_node_html(node) for col, node in trees.items()}
+
+        result: dict = {}
+        exc_holder: list = []
+
+        def _run() -> None:
+            try:
+                result["trees"] = build_column_trees(expr)
+            except Exception as e:  # noqa: BLE001
+                exc_holder.append(e)
+
+        t = threading.Thread(target=_run, daemon=True)
+        t.start()
+        t.join(timeout=5.0)
+
+        if t.is_alive():
+            log.warning("build_column_trees timed out for %s — skipping lineage", build_dir)
+            return {}
+
+        if exc_holder:
+            raise exc_holder[0]
+
+        return {col: _render_node_html(node) for col, node in result["trees"].items()}
     except Exception as exc:
         log.warning("Failed to build lineage from %s: %s", build_dir, exc)
         return {}
@@ -95,7 +120,7 @@ def _start_buckaroo_server(port: int) -> None:
 
     log_dir = os.path.join(os.path.expanduser("~"), ".xorq", "logs")
     os.makedirs(log_dir, exist_ok=True)
-    log_fh = open(os.path.join(log_dir, "server.log"), "a")
+    log_fh = open(log_dir + "/server.log", "a")
     subprocess.Popen(cmd, stdout=log_fh, stderr=log_fh)
 
     for _ in range(20):
@@ -136,37 +161,56 @@ def ensure_buckaroo_session(parquet_path: str, session_id: str, buckaroo_port: i
     return json.loads(resp.read())
 
 
-def get_all_runs() -> list[dict]:
+def get_all_runs(snapshot=None) -> list[dict]:
     """Return every revision across all entries, sorted newest-first.
 
     Each dict: {display_name, entry_id, revision_id, build_id, created_at,
                 prompt, execute_seconds}
     """
-    from xorq.catalog import load_catalog
+    from xorq_web.catalog_utils import CatalogSnapshot, _read_entry_metadata
 
-    catalog = load_catalog()
-    if not catalog.entries:
+    if snapshot is None:
+        snapshot = CatalogSnapshot()
+
+    if not snapshot.entries:
         return []
 
-    alias_lookup: dict[str, list[str]] = {}
-    if catalog.aliases:
-        for name, alias in catalog.aliases.items():
-            alias_lookup.setdefault(alias.entry_id, []).append(name)
-
     runs = []
-    for entry in catalog.entries:
-        aliases = alias_lookup.get(entry.entry_id, [])
-        display_name = aliases[0] if aliases else entry.entry_id[:12]
+    for entry in snapshot.entries:
+        display_name = snapshot.display_name_for(entry.name)
+        meta = _read_entry_metadata(entry)
 
-        for rev in entry.history:
-            meta = rev.metadata or {}
+        # Get revisions from aliases (git-backed revision history)
+        aliases = entry.aliases
+        revisions = []
+        if aliases:
+            try:
+                revisions = aliases[0].list_revisions()
+            except Exception:
+                pass
+
+        if revisions:
+            for rev_entry, commit in revisions:
+                runs.append(
+                    {
+                        "display_name": display_name,
+                        "entry_id": entry.name,
+                        "revision_id": commit.hexsha[:12],
+                        "build_id": entry.name,
+                        "created_at": str(commit.authored_datetime),
+                        "prompt": meta.get("prompt"),
+                        "execute_seconds": meta.get("execute_seconds"),
+                    }
+                )
+        else:
+            # No revision history available — single entry
             runs.append(
                 {
                     "display_name": display_name,
-                    "entry_id": entry.entry_id,
-                    "revision_id": rev.revision_id,
-                    "build_id": rev.build.build_id if rev.build else None,
-                    "created_at": str(rev.created_at) if rev.created_at else None,
+                    "entry_id": entry.name,
+                    "revision_id": None,
+                    "build_id": entry.name,
+                    "created_at": None,
                     "prompt": meta.get("prompt"),
                     "execute_seconds": meta.get("execute_seconds"),
                 }
@@ -176,72 +220,81 @@ def get_all_runs() -> list[dict]:
     return runs
 
 
-def get_entry_revisions(target: str) -> list[dict]:
+def get_entry_revisions(target: str, snapshot=None) -> list[dict]:
     """Return all revisions for the entry that target resolves to.
 
     Each dict: {revision_id, build_id, created_at, is_current}
     Returns [] if target can't be resolved.
     """
-    from xorq.catalog import Target, load_catalog
+    from xorq_web.catalog_utils import CatalogSnapshot, resolve_target
 
-    catalog = load_catalog()
-    resolved = Target.from_str(target, catalog)
-    if resolved is None:
-        return []
+    if snapshot is None:
+        snapshot = CatalogSnapshot()
 
-    entry = catalog.maybe_get_entry(resolved.entry_id)
+    entry = resolve_target(target, snapshot)
     if entry is None:
         return []
 
-    return [
-        {
-            "revision_id": rev.revision_id,
-            "build_id": rev.build.build_id if rev.build else None,
-            "created_at": str(rev.created_at) if rev.created_at else None,
-            "is_current": rev.revision_id == entry.current_revision,
-        }
-        for rev in entry.history
-    ]
-
-
-def get_catalog_entries() -> list[dict]:
-    """Load catalog and return a list of entry dicts for navigation.
-
-    Each dict has: alias, entry_id, revision, build_id, created_at, col_count.
-    """
-    from xorq.catalog import load_catalog
-
-    catalog = load_catalog()
-    if not catalog.entries:
+    # Get revision history from aliases
+    aliases = entry.aliases
+    if not aliases:
         return []
 
-    # Build alias lookup: entry_id -> list of alias names
-    alias_lookup: dict[str, list[str]] = {}
-    if catalog.aliases:
-        for name, alias in catalog.aliases.items():
-            alias_lookup.setdefault(alias.entry_id, []).append(name)
+    try:
+        revisions = aliases[0].list_revisions()
+    except Exception:
+        return []
+
+    result = []
+    for i, (rev_entry, commit) in enumerate(revisions):
+        result.append(
+            {
+                "revision_id": commit.hexsha[:12],
+                "build_id": entry.name,
+                "created_at": str(commit.authored_datetime),
+                "is_current": i == len(revisions) - 1,
+            }
+        )
+    return result
+
+
+def get_catalog_entries(snapshot=None) -> list[dict]:
+    """Load catalog and return a list of entry dicts for navigation.
+
+    Each dict has: display_name, aliases, entry_id, revision, build_id, created_at.
+    """
+    from xorq_web.catalog_utils import CatalogSnapshot
+
+    if snapshot is None:
+        snapshot = CatalogSnapshot()
+
+    if not snapshot.entries:
+        return []
 
     entries = []
-    for entry in catalog.entries:
-        curr_rev = entry.current_revision
-        build_id = None
-        created_at = None
-        for rev in entry.history:
-            if rev.revision_id == curr_rev and rev.build:
-                build_id = rev.build.build_id
-                created_at = str(rev.created_at) if rev.created_at else None
-                break
+    for entry in snapshot.entries:
+        aliases = snapshot.aliases_for(entry.name)
+        display_name = snapshot.display_name_for(entry.name)
 
-        aliases = alias_lookup.get(entry.entry_id, [])
-        display_name = aliases[0] if aliases else entry.entry_id[:12]
+        # Get latest revision info from alias history
+        created_at = None
+        alias_objs = entry.aliases
+        if alias_objs:
+            try:
+                revisions = alias_objs[0].list_revisions()
+                if revisions:
+                    _, commit = revisions[-1]
+                    created_at = str(commit.authored_datetime)
+            except Exception:
+                pass
 
         entries.append(
             {
                 "display_name": display_name,
                 "aliases": aliases,
-                "entry_id": entry.entry_id,
-                "revision": curr_rev,
-                "build_id": build_id,
+                "entry_id": entry.name,
+                "revision": None,
+                "build_id": entry.name,
                 "created_at": created_at,
             }
         )
@@ -249,14 +302,14 @@ def get_catalog_entries() -> list[dict]:
     return entries
 
 
-def get_all_entries() -> list[dict]:
+def get_all_entries(snapshot=None) -> list[dict]:
     """Return catalog entries + session entries, each tagged with ``source``.
 
     Catalog entries get ``source: "catalog"``, session entries get ``source: "session"``.
     """
     from xorq_web.session_store import get_session_entries
 
-    catalog = [dict(e, source="catalog") for e in get_catalog_entries()]
+    catalog = [dict(e, source="catalog") for e in get_catalog_entries(snapshot)]
     session = [
         {
             "display_name": e["name"],
@@ -272,11 +325,11 @@ def get_all_entries() -> list[dict]:
     return catalog + session
 
 
-def get_all_runs_merged() -> list[dict]:
+def get_all_runs_merged(snapshot=None) -> list[dict]:
     """Return catalog runs + session entries merged, each tagged with ``source``."""
     from xorq_web.session_store import get_session_entries
 
-    catalog_runs = [dict(r, source="catalog") for r in get_all_runs()]
+    catalog_runs = [dict(r, source="catalog") for r in get_all_runs(snapshot)]
     session_runs = [
         {
             "display_name": e["name"],

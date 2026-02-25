@@ -829,3 +829,88 @@ a:hover {
   color: var(--accent);
   border: 1px solid var(--border);
 }
+
+/* ==========================================================================
+   ERROR PAGE
+   ========================================================================== */
+
+.error-page {
+  max-width: 720px;
+}
+
+.error-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: var(--space-2);
+}
+
+.error-type {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--error);
+}
+
+.error-explanation {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--error);
+  border-radius: 0;
+  padding: var(--space-2);
+  margin-bottom: var(--space-2);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.error-explanation code {
+  background: var(--badge-bg);
+  padding: 0 3px;
+  border-radius: 1px;
+  color: var(--accent);
+}
+
+.error-mitigation {
+  margin-bottom: var(--space-2);
+}
+
+.error-mitigation ol {
+  padding-left: var(--space-3);
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--text);
+}
+
+.error-diagnostics {
+  margin-bottom: var(--space-2);
+}
+
+.error-traceback {
+  margin-bottom: var(--space-2);
+}
+
+.error-traceback summary {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px 0;
+}
+
+.error-traceback pre {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+  font-size: 11px;
+  color: var(--text-secondary);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.error-report {
+  margin-top: var(--space-2);
+}

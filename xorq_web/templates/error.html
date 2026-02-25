@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Error — xorq{% end %}
+
+{% block content %}
+<div class="error-page">
+  <div class="page-header">
+    <h1>Something went wrong</h1>
+  </div>
+
+  <div class="error-summary">
+    <span class="badge" style="background: rgba(255, 107, 107, 0.15); color: var(--error); border-color: var(--error);">
+      {{ status_code }}
+    </span>
+    {% if report and report.error_type %}
+    <span class="error-type">{{ report.error_type }}</span>
+    {% end %}
+  </div>
+
+  {% if report and report.is_desync %}
+  <div class="error-explanation">
+    <p>
+      The catalog index (<code>catalog.yaml</code>) is out of sync with the
+      files on disk. The index lists <strong>{{ report.yaml_entry_count }}</strong>
+      entries but the filesystem has <strong>{{ report.fs_entry_count }}</strong>.
+    </p>
+  </div>
+  {% elif report and not report.healthy %}
+  <div class="error-explanation">
+    <p>{{ report.summary }}</p>
+  </div>
+  {% else %}
+  <div class="error-explanation">
+    <p>An unexpected error occurred while processing your request.</p>
+  </div>
+  {% end %}
+
+  {% if report and report.mitigation_steps %}
+  <div class="error-mitigation">
+    <h3 class="section-title">What you can do</h3>
+    <ol>
+      {% for step in report.mitigation_steps %}
+      <li>{{ step }}</li>
+      {% end %}
+    </ol>
+  </div>
+  {% end %}
+
+  {% if report %}
+  <h3 class="section-title">Diagnostics</h3>
+  <div class="metadata-grid error-diagnostics">
+    <div class="metadata-item">
+      <div class="label">Catalog path</div>
+      <div class="value">{{ report.repo_path or "unknown" }}</div>
+    </div>
+    <div class="metadata-item">
+      <div class="label">YAML entries</div>
+      <div class="value">{{ report.yaml_entry_count }}</div>
+    </div>
+    <div class="metadata-item">
+      <div class="label">FS entries</div>
+      <div class="value">{{ report.fs_entry_count }}</div>
+    </div>
+    <div class="metadata-item">
+      <div class="label">YAML aliases</div>
+      <div class="value">{{ report.yaml_alias_count }}</div>
+    </div>
+    <div class="metadata-item">
+      <div class="label">FS aliases</div>
+      <div class="value">{{ report.fs_alias_count }}</div>
+    </div>
+    <div class="metadata-item">
+      <div class="label">xorq version</div>
+      <div class="value">{{ report.xorq_version }}</div>
+    </div>
+    <div class="metadata-item">
+      <div class="label">Python</div>
+      <div class="value">{{ report.python_version }}</div>
+    </div>
+    {% if report.repair_available %}
+    <div class="metadata-item">
+      <div class="label">Repair</div>
+      <div class="value">{{ report.repair_hint }}</div>
+    </div>
+    {% end %}
+  </div>
+  {% end %}
+
+  {% if report and report.traceback_text %}
+  <details class="error-traceback">
+    <summary>Traceback (click to expand)</summary>
+    <pre>{{ report.traceback_text }}</pre>
+  </details>
+  {% end %}
+
+  <div class="error-report">
+    <a href="https://github.com/xorq-labs/xorq/issues/new" class="view-btn" target="_blank" rel="noopener">
+      File a bug report
+    </a>
+  </div>
+</div>
+{% end %}

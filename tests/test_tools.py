@@ -47,9 +47,11 @@ class TestCatalogLs:
     """Tests for the xorq_catalog_ls tool."""
 
     def test_empty_catalog(self):
-        from xorq.catalog import XorqCatalog
+        mock_snap = MagicMock()
+        mock_snap.entries = ()
+        mock_snap.aliases = ()
 
-        with patch("xorq.catalog.load_catalog", return_value=XorqCatalog()):
+        with patch("xorq_web.catalog_utils.CatalogSnapshot", return_value=mock_snap):
             from xorq_mcp_tool import xorq_catalog_ls
 
             result = xorq_catalog_ls()
@@ -60,9 +62,12 @@ class TestDiffBuilds:
     """Tests for the xorq_diff_builds tool."""
 
     def test_missing_left_target(self):
-        from xorq.catalog import XorqCatalog
+        mock_snap = MagicMock()
+        mock_snap.entries = ()
+        mock_snap.aliases = ()
+        mock_snap.get_catalog_entry.return_value = None
 
-        with patch("xorq.catalog.load_catalog", return_value=XorqCatalog()):
+        with patch("xorq_web.catalog_utils.CatalogSnapshot", return_value=mock_snap):
             from xorq_mcp_tool import xorq_diff_builds
 
             result = xorq_diff_builds("/nonexistent/left", "/nonexistent/right")
@@ -73,9 +78,12 @@ class TestLineage:
     """Tests for the xorq_lineage tool."""
 
     def test_missing_build_target(self):
-        from xorq.catalog import XorqCatalog
+        mock_snap = MagicMock()
+        mock_snap.entries = ()
+        mock_snap.aliases = ()
+        mock_snap.get_catalog_entry.return_value = None
 
-        with patch("xorq.catalog.load_catalog", return_value=XorqCatalog()):
+        with patch("xorq_web.catalog_utils.CatalogSnapshot", return_value=mock_snap):
             from xorq_mcp_tool import xorq_lineage
 
             result = xorq_lineage("/nonexistent/build")
@@ -124,3 +132,88 @@ class TestFormatLineageText:
         lines = result.strip().split("\n")
         assert len(lines) == 2
         assert lines[1].startswith("  ")
+
+
+class TestXorqDoctor:
+    """Tests for the xorq_doctor tool."""
+
+    @patch("xorq_mcp_tool._web_health_check", return_value=None)
+    @patch("xorq_mcp_tool._health_check", return_value=None)
+    @patch("xorq_web.catalog_utils.catalog_health_check")
+    def test_doctor_healthy(self, mock_check, mock_bk, mock_web):
+        from xorq_web.catalog_utils import CatalogHealthReport
+
+        mock_check.return_value = CatalogHealthReport(
+            healthy=True,
+            repo_path="/fake/repo",
+            catalog_yaml_exists=True,
+            yaml_entry_count=5,
+            yaml_alias_count=3,
+            fs_entry_count=5,
+            fs_alias_count=3,
+            xorq_version="0.3.11",
+            python_version="3.13.0",
+        )
+
+        from xorq_mcp_tool import xorq_doctor
+
+        result = xorq_doctor(fix=False)
+        assert "OK" in result
+        assert "xorq doctor" in result
+
+    @patch("xorq_mcp_tool._web_health_check", return_value=None)
+    @patch("xorq_mcp_tool._health_check", return_value=None)
+    @patch("xorq_web.catalog_utils.catalog_health_check")
+    def test_doctor_detects_desync(self, mock_check, mock_bk, mock_web):
+        from xorq_web.catalog_utils import CatalogHealthReport
+
+        mock_check.return_value = CatalogHealthReport(
+            healthy=False,
+            is_desync=True,
+            missing_from_yaml=["entry_a", "entry_b"],
+            repo_path="/fake/repo",
+            catalog_yaml_exists=True,
+            yaml_entry_count=0,
+            fs_entry_count=2,
+            xorq_version="0.3.11",
+            python_version="3.13.0",
+            error_type="AssertionError",
+            error_message="desync",
+        )
+
+        from xorq_mcp_tool import xorq_doctor
+
+        result = xorq_doctor(fix=False)
+        assert "Desync detected" in result
+        assert "UNHEALTHY" in result
+
+    @patch("xorq_mcp_tool._web_health_check", return_value=None)
+    @patch("xorq_mcp_tool._health_check", return_value=None)
+    @patch("xorq_web.catalog_utils.repair_catalog_yaml", return_value="Repaired: 2 entries")
+    @patch("xorq_web.catalog_utils.catalog_health_check")
+    def test_doctor_fix(self, mock_check, mock_repair, mock_bk, mock_web):
+        from xorq_web.catalog_utils import CatalogHealthReport
+
+        # First call returns desync, second (post-repair) returns healthy
+        mock_check.side_effect = [
+            CatalogHealthReport(
+                healthy=False,
+                is_desync=True,
+                missing_from_yaml=["a"],
+                repo_path="/fake/repo",
+                catalog_yaml_exists=True,
+                yaml_entry_count=0,
+                fs_entry_count=1,
+                xorq_version="0.3.11",
+                python_version="3.13.0",
+                error_type="AssertionError",
+                error_message="desync",
+            ),
+            CatalogHealthReport(healthy=True, python_version="3.13.0", xorq_version="0.3.11"),
+        ]
+
+        from xorq_mcp_tool import xorq_doctor
+
+        result = xorq_doctor(fix=True)
+        assert "Repair" in result
+        assert "Repaired" in result
