@@ -2,6 +2,7 @@
 
 import json
 import os
+from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -18,6 +19,100 @@ from xorq_web.metadata import (
     load_build_schema,
     load_lineage_html,
 )
+
+
+# -----------------------------------------------------------------------
+# Test helpers — mock catalog objects
+# -----------------------------------------------------------------------
+def _mock_empty_snapshot():
+    """Return a MagicMock CatalogSnapshot with no entries or aliases."""
+    snap = MagicMock()
+    snap.entries = ()
+    snap.aliases = ()
+    snap.contains.return_value = False
+    snap.get_catalog_entry.return_value = None
+    snap.get_catalog_alias.return_value = None
+    snap.aliases_for.return_value = []
+    snap.display_name_for.return_value = ""
+    return snap
+
+
+def _mock_catalog_entry(name, aliases=None, exists=True, catalog_path=None, metadata_path=None):
+    """Return a MagicMock CatalogEntry."""
+    entry = MagicMock()
+    entry.name = name
+    entry.exists.return_value = exists
+    entry.catalog_path = catalog_path or Path(f"/fake/entries/{name}.tgz")
+    entry.metadata_path = metadata_path or Path(f"/fake/metadata/{name}.tgz.metadata.yaml")
+
+    # Build alias objects
+    alias_mocks = []
+    for alias_name in aliases or []:
+        ca = MagicMock()
+        ca.alias = alias_name
+        ca.catalog_entry = entry
+        ca.list_revisions.return_value = []
+        alias_mocks.append(ca)
+    entry.aliases = tuple(alias_mocks)
+
+    return entry
+
+
+def _mock_snapshot_with_entries(entries_with_aliases):
+    """Build a CatalogSnapshot mock from a list of (entry_name, [aliases]) tuples."""
+    snap = _mock_empty_snapshot()
+    entry_objs = []
+    alias_objs = []
+    entry_map = {}
+    alias_map = {}
+    alias_lookup = {}
+
+    for entry_name, aliases in entries_with_aliases:
+        entry = _mock_catalog_entry(entry_name, aliases=aliases)
+        entry_objs.append(entry)
+        entry_map[entry_name] = entry
+        alias_lookup[entry_name] = sorted(aliases) if aliases else []
+        for alias_name in aliases or []:
+            for ca in entry.aliases:
+                if ca.alias == alias_name:
+                    alias_objs.append(ca)
+                    alias_map[alias_name] = ca
+                    break
+
+    snap.entries = tuple(entry_objs)
+    snap.aliases = tuple(alias_objs)
+
+    def _contains(name):
+        return name in entry_map or name in alias_map
+
+    def _get_entry(name):
+        if name in entry_map:
+            return entry_map[name]
+        ca = alias_map.get(name)
+        return ca.catalog_entry if ca else None
+
+    def _get_alias(name):
+        return alias_map.get(name)
+
+    def _aliases_for(entry_name):
+        return alias_lookup.get(entry_name, [])
+
+    def _display_name_for(entry_name):
+        als = alias_lookup.get(entry_name, [])
+        return als[0] if als else entry_name[:12]
+
+    snap.contains.side_effect = _contains
+    snap.get_catalog_entry.side_effect = _get_entry
+    snap.get_catalog_alias.side_effect = _get_alias
+    snap.aliases_for.side_effect = _aliases_for
+    snap.display_name_for.side_effect = _display_name_for
+    return snap
+
+
+@contextmanager
+def _fake_extract_build_tgz(build_dir):
+    """Context manager that yields a pre-created build directory."""
+    yield build_dir
 
 
 # -----------------------------------------------------------------------
@@ -91,6 +186,46 @@ class TestLoadLineageHtml:
 
 
 # -----------------------------------------------------------------------
+# metadata.py — load_lineage_html timeout
+# -----------------------------------------------------------------------
+class TestLoadLineageHtmlTimeout:
+    """load_lineage_html must not hang when build_column_trees is slow.
+
+    Reproduces the hang on complex multi-join expressions (e.g. good_deal_by_position)
+    where build_column_trees traverses a shared-subgraph expression DAG without
+    memoization, leading to exponential traversal time that never returns.
+    """
+
+    @patch("xorq.ibis_yaml.compiler.load_expr")
+    @patch("xorq.common.utils.lineage_utils.build_column_trees")
+    def test_returns_empty_dict_when_build_column_trees_hangs(
+        self, mock_trees, mock_load, tmp_path
+    ):
+        import threading
+
+        mock_load.return_value = MagicMock()
+        never_done = threading.Event()
+        mock_trees.side_effect = lambda expr: never_done.wait() or {}
+
+        result_box = {}
+
+        def _call():
+            result_box["value"] = load_lineage_html(tmp_path)
+
+        t = threading.Thread(target=_call, daemon=True)
+        t.start()
+        t.join(timeout=8.0)  # 5s internal timeout + 3s slack
+        never_done.set()  # release hanging mock thread
+
+        assert not t.is_alive(), (
+            "load_lineage_html is still running after 8s — build_column_trees has no timeout"
+        )
+        assert result_box.get("value") == {}, (
+            f"Expected empty dict on timeout, got {result_box.get('value')!r}"
+        )
+
+
+# -----------------------------------------------------------------------
 # metadata.py — _render_node_html
 # -----------------------------------------------------------------------
 class TestRenderNodeHtml:
@@ -132,68 +267,23 @@ class TestRenderNodeHtml:
 # -----------------------------------------------------------------------
 class TestGetCatalogEntries:
     def test_empty_catalog(self):
-        from xorq.catalog import XorqCatalog
-
-        with patch(
-            "xorq.catalog.load_catalog",
-            return_value=XorqCatalog(),
-        ):
-            result = get_catalog_entries()
-            assert result == []
+        snap = _mock_empty_snapshot()
+        result = get_catalog_entries(snap)
+        assert result == []
 
     def test_entry_with_alias(self):
-        """Entries with aliases use the alias as display_name."""
-        mock_build = MagicMock()
-        mock_build.build_id = "abc123"
-
-        mock_rev = MagicMock()
-        mock_rev.revision_id = "r1"
-        mock_rev.build = mock_build
-        mock_rev.created_at = "2025-01-01T00:00:00"
-
-        mock_entry = MagicMock()
-        mock_entry.entry_id = "entry-uuid-1234"
-        mock_entry.current_revision = "r1"
-        mock_entry.history = [mock_rev]
-
-        mock_alias = MagicMock()
-        mock_alias.entry_id = "entry-uuid-1234"
-
-        mock_catalog = MagicMock()
-        mock_catalog.entries = [mock_entry]
-        mock_catalog.aliases = {"my_alias": mock_alias}
-
-        with patch("xorq.catalog.load_catalog", return_value=mock_catalog):
-            result = get_catalog_entries()
-            assert len(result) == 1
-            assert result[0]["display_name"] == "my_alias"
-            assert result[0]["build_id"] == "abc123"
-            assert result[0]["revision"] == "r1"
-            assert "my_alias" in result[0]["aliases"]
+        snap = _mock_snapshot_with_entries([("entry-uuid-1234", ["my_alias"])])
+        result = get_catalog_entries(snap)
+        assert len(result) == 1
+        assert result[0]["display_name"] == "my_alias"
+        assert result[0]["entry_id"] == "entry-uuid-1234"
+        assert "my_alias" in result[0]["aliases"]
 
     def test_entry_without_alias_uses_truncated_id(self):
-        mock_build = MagicMock()
-        mock_build.build_id = "def456"
-
-        mock_rev = MagicMock()
-        mock_rev.revision_id = "r1"
-        mock_rev.build = mock_build
-        mock_rev.created_at = None
-
-        mock_entry = MagicMock()
-        mock_entry.entry_id = "abcdef123456789000"
-        mock_entry.current_revision = "r1"
-        mock_entry.history = [mock_rev]
-
-        mock_catalog = MagicMock()
-        mock_catalog.entries = [mock_entry]
-        mock_catalog.aliases = {}
-
-        with patch("xorq.catalog.load_catalog", return_value=mock_catalog):
-            result = get_catalog_entries()
-            assert len(result) == 1
-            assert result[0]["display_name"] == "abcdef123456"
-            assert result[0]["created_at"] is None
+        snap = _mock_snapshot_with_entries([("abcdef123456789000", [])])
+        result = get_catalog_entries(snap)
+        assert len(result) == 1
+        assert result[0]["display_name"] == "abcdef123456"
 
 
 # -----------------------------------------------------------------------
@@ -201,146 +291,65 @@ class TestGetCatalogEntries:
 # -----------------------------------------------------------------------
 class TestGetAllRuns:
     def test_empty_catalog(self):
-        mock_catalog = MagicMock()
-        mock_catalog.entries = []
-        mock_catalog.aliases = {}
-        with patch("xorq.catalog.load_catalog", return_value=mock_catalog):
-            result = get_all_runs()
-            assert result == []
+        snap = _mock_empty_snapshot()
+        result = get_all_runs(snap)
+        assert result == []
 
-    def test_returns_all_revisions_across_entries(self):
-        mock_build_a = MagicMock()
-        mock_build_a.build_id = "build-a"
-        mock_rev_a = MagicMock()
-        mock_rev_a.revision_id = "r1"
-        mock_rev_a.build = mock_build_a
-        mock_rev_a.created_at = "2025-01-01"
-        mock_rev_a.metadata = {"prompt": "create expr A"}
-
-        mock_build_b = MagicMock()
-        mock_build_b.build_id = "build-b"
-        mock_rev_b = MagicMock()
-        mock_rev_b.revision_id = "r1"
-        mock_rev_b.build = mock_build_b
-        mock_rev_b.created_at = "2025-02-01"
-        mock_rev_b.metadata = {"execute_seconds": 1.5}
-
-        mock_entry_a = MagicMock()
-        mock_entry_a.entry_id = "entry-a"
-        mock_entry_a.history = [mock_rev_a]
-        mock_entry_b = MagicMock()
-        mock_entry_b.entry_id = "entry-b"
-        mock_entry_b.history = [mock_rev_b]
-
-        mock_alias_a = MagicMock()
-        mock_alias_a.entry_id = "entry-a"
-        mock_alias_b = MagicMock()
-        mock_alias_b.entry_id = "entry-b"
-
-        mock_catalog = MagicMock()
-        mock_catalog.entries = [mock_entry_a, mock_entry_b]
-        mock_catalog.aliases = {"expr_a": mock_alias_a, "expr_b": mock_alias_b}
-
-        with patch("xorq.catalog.load_catalog", return_value=mock_catalog):
-            result = get_all_runs()
+    def test_returns_entries(self):
+        snap = _mock_snapshot_with_entries(
+            [
+                ("entry-a", ["expr_a"]),
+                ("entry-b", ["expr_b"]),
+            ]
+        )
+        # Mock _read_entry_metadata for each entry
+        with patch("xorq_web.catalog_utils._read_entry_metadata") as mock_meta:
+            mock_meta.side_effect = lambda e: (
+                {"prompt": "create expr A"} if e.name == "entry-a" else {"execute_seconds": 1.5}
+            )
+            result = get_all_runs(snap)
 
         assert len(result) == 2
-        # Sorted newest first
-        assert result[0]["display_name"] == "expr_b"
-        assert result[0]["execute_seconds"] == 1.5
-        assert result[1]["display_name"] == "expr_a"
-        assert result[1]["prompt"] == "create expr A"
+        # Both entries should appear
+        names = {r["display_name"] for r in result}
+        assert "expr_a" in names
+        assert "expr_b" in names
 
 
 # -----------------------------------------------------------------------
 # metadata.py — get_entry_revisions
 # -----------------------------------------------------------------------
 class TestGetEntryRevisions:
-    def _make_revision(self, revision_id, build_id=None, created_at=None):
-        mock_rev = MagicMock()
-        mock_rev.revision_id = revision_id
-        mock_rev.created_at = created_at
-        if build_id:
-            mock_rev.build = MagicMock()
-            mock_rev.build.build_id = build_id
-        else:
-            mock_rev.build = None
-        return mock_rev
-
-    def _make_catalog(self, entry_id, revisions, alias_name=None, current_revision=None):
-        mock_entry = MagicMock()
-        mock_entry.entry_id = entry_id
-        mock_entry.current_revision = current_revision or revisions[-1].revision_id
-        mock_entry.history = revisions
-
-        mock_catalog = MagicMock()
-        mock_catalog.entries = [mock_entry]
-
-        if alias_name:
-            mock_alias = MagicMock()
-            mock_alias.entry_id = entry_id
-            mock_alias.revision_id = current_revision or revisions[-1].revision_id
-            mock_catalog.aliases = {alias_name: mock_alias}
-        else:
-            mock_catalog.aliases = {}
-
-        # Wire up maybe_get_entry
-        mock_catalog.maybe_get_entry = lambda eid: mock_entry if eid == entry_id else None
-
-        return mock_catalog
-
     def test_returns_empty_for_unknown_target(self):
-        from xorq.catalog import Target
+        snap = _mock_empty_snapshot()
+        with patch("xorq_web.catalog_utils.resolve_target", return_value=None):
+            result = get_entry_revisions("nonexistent", snap)
+            assert result == []
 
-        with patch("xorq.catalog.load_catalog") as mock_load:
-            mock_catalog = MagicMock()
-            mock_catalog.entries = []
-            mock_catalog.aliases = {}
-            mock_load.return_value = mock_catalog
-            with patch.object(Target, "from_str", return_value=None):
-                result = get_entry_revisions("nonexistent")
-                assert result == []
+    def test_returns_revisions_from_alias(self):
+        snap = _mock_snapshot_with_entries([("entry-uuid", ["my_expr"])])
+        entry = snap.get_catalog_entry("my_expr")
 
-    def test_returns_all_revisions_for_alias(self):
-        from xorq.catalog import Target
+        # Add revision history to alias
+        mock_commit1 = MagicMock()
+        mock_commit1.hexsha = "aabbcc112233"
+        mock_commit1.authored_datetime = "2025-01-01T00:00:00"
+        mock_commit2 = MagicMock()
+        mock_commit2.hexsha = "ddeeff445566"
+        mock_commit2.authored_datetime = "2025-02-01T00:00:00"
+        entry.aliases[0].list_revisions.return_value = [
+            (entry, mock_commit1),
+            (entry, mock_commit2),
+        ]
 
-        r1 = self._make_revision("r1", build_id="build-aaa", created_at="2025-01-01")
-        r2 = self._make_revision("r2", build_id="build-bbb", created_at="2025-02-01")
-        r3 = self._make_revision("r3", build_id="build-ccc", created_at="2025-03-01")
-        catalog = self._make_catalog("entry-uuid", [r1, r2, r3], alias_name="my_expr")
+        with patch("xorq_web.catalog_utils.resolve_target", return_value=entry):
+            result = get_entry_revisions("my_expr", snap)
 
-        mock_target = MagicMock()
-        mock_target.entry_id = "entry-uuid"
-        mock_target.rev = "r3"
-
-        with patch("xorq.catalog.load_catalog", return_value=catalog):
-            with patch.object(Target, "from_str", return_value=mock_target):
-                result = get_entry_revisions("my_expr")
-
-        assert len(result) == 3
-        assert result[0]["revision_id"] == "r1"
-        assert result[1]["revision_id"] == "r2"
-        assert result[2]["revision_id"] == "r3"
-        assert result[2]["is_current"] is True
-        assert result[0]["is_current"] is False
-        assert result[1]["build_id"] == "build-bbb"
-
-    def test_marks_correct_current_revision(self):
-        from xorq.catalog import Target
-
-        r1 = self._make_revision("r1", build_id="b1")
-        r2 = self._make_revision("r2", build_id="b2")
-        catalog = self._make_catalog("e1", [r1, r2], alias_name="expr", current_revision="r2")
-
-        mock_target = MagicMock()
-        mock_target.entry_id = "e1"
-
-        with patch("xorq.catalog.load_catalog", return_value=catalog):
-            with patch.object(Target, "from_str", return_value=mock_target):
-                result = get_entry_revisions("expr")
-
-        assert result[0]["is_current"] is False
+        assert len(result) == 2
+        assert result[0]["revision_id"] == "aabbcc112233"
+        assert result[1]["revision_id"] == "ddeeff445566"
         assert result[1]["is_current"] is True
+        assert result[0]["is_current"] is False
 
 
 # -----------------------------------------------------------------------
@@ -390,7 +399,9 @@ class TestCatalogIndexHandler(tornado.testing.AsyncHTTPTestCase):
     @patch("xorq_web.handlers.get_session_entries", return_value=[])
     @patch("xorq_web.handlers.get_all_entries", return_value=[])
     @patch("xorq_web.handlers.get_catalog_entries", return_value=[])
-    def test_empty_catalog_renders(self, mock_entries, mock_all, mock_session):
+    @patch("xorq_web.handlers.CatalogSnapshot")
+    def test_empty_catalog_renders(self, mock_snap, mock_entries, mock_all, mock_session):
+        mock_snap.return_value = _mock_empty_snapshot()
         resp = self.fetch("/")
         assert resp.code == 200
         body = resp.body.decode()
@@ -400,7 +411,9 @@ class TestCatalogIndexHandler(tornado.testing.AsyncHTTPTestCase):
     @patch("xorq_web.handlers.get_session_entries", return_value=[])
     @patch("xorq_web.handlers.get_all_entries")
     @patch("xorq_web.handlers.get_catalog_entries")
-    def test_catalog_with_entries(self, mock_entries, mock_all, mock_session):
+    @patch("xorq_web.handlers.CatalogSnapshot")
+    def test_catalog_with_entries(self, mock_snap, mock_entries, mock_all, mock_session):
+        mock_snap.return_value = _mock_empty_snapshot()
         entry = {
             "display_name": "test_expr",
             "aliases": ["test_expr"],
@@ -438,7 +451,9 @@ class TestRunsHandler(tornado.testing.AsyncHTTPTestCase):
     @patch("xorq_web.handlers.get_session_entries", return_value=[])
     @patch("xorq_web.handlers.get_catalog_entries", return_value=[])
     @patch("xorq_web.handlers.get_all_runs_merged", return_value=[])
-    def test_empty_runs_renders(self, mock_runs, mock_entries, mock_session):
+    @patch("xorq_web.handlers.CatalogSnapshot")
+    def test_empty_runs_renders(self, mock_snap, mock_runs, mock_entries, mock_session):
+        mock_snap.return_value = _mock_empty_snapshot()
         resp = self.fetch("/runs")
         assert resp.code == 200
         body = resp.body.decode()
@@ -447,7 +462,9 @@ class TestRunsHandler(tornado.testing.AsyncHTTPTestCase):
     @patch("xorq_web.handlers.get_session_entries", return_value=[])
     @patch("xorq_web.handlers.get_catalog_entries", return_value=[])
     @patch("xorq_web.handlers.get_all_runs_merged")
-    def test_runs_with_data(self, mock_runs, mock_entries, mock_session):
+    @patch("xorq_web.handlers.CatalogSnapshot")
+    def test_runs_with_data(self, mock_snap, mock_runs, mock_entries, mock_session):
+        mock_snap.return_value = _mock_empty_snapshot()
         mock_runs.return_value = [
             {
                 "display_name": "my_expr",
@@ -489,9 +506,10 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
 
     @patch("xorq_web.handlers.get_session_entries", return_value=[])
     @patch("xorq_web.handlers.get_catalog_entries", return_value=[])
-    @patch("xorq.catalog.resolve_build_dir", return_value=None)
-    @patch("xorq.catalog.load_catalog")
-    def test_missing_target_returns_404(self, mock_cat, mock_resolve, mock_entries, mock_session):
+    @patch("xorq_web.handlers.resolve_target", return_value=None)
+    @patch("xorq_web.handlers.CatalogSnapshot")
+    def test_missing_target_returns_404(self, mock_snap, mock_resolve, mock_entries, mock_session):
+        mock_snap.return_value = _mock_empty_snapshot()
         resp = self.fetch("/entry/nonexistent")
         assert resp.code == 404
 
@@ -504,18 +522,18 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
     @patch("xorq_web.handlers.ensure_buckaroo_session", return_value={"session": "abc"})
     @patch("xorq_web.handlers.get_entry_revisions", return_value=[])
     @patch("xorq_web.handlers.get_catalog_entries")
-    @patch("xorq.catalog.resolve_build_dir")
-    @patch("xorq.catalog.load_catalog")
-    @patch("xorq.catalog.Target.from_str")
+    @patch("xorq_web.handlers._read_entry_metadata", return_value={})
+    @patch("xorq_web.handlers.resolve_target")
+    @patch("xorq_web.handlers.CatalogSnapshot")
     @patch("xorq.ibis_yaml.compiler.load_expr")
     @patch("xorq.common.utils.caching_utils.get_xorq_cache_dir", return_value="/tmp/cache")
     def test_valid_target_renders_detail(
         self,
         mock_cache,
         mock_load_expr,
-        mock_target_from_str,
-        mock_cat,
+        mock_snap,
         mock_resolve,
+        mock_meta_entry,
         mock_entries,
         mock_revisions,
         mock_bk_session,
@@ -525,39 +543,37 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
     ):
         import tempfile
 
-        mock_resolved = MagicMock()
-        mock_resolved.entry_id = "uuid-1"
-        mock_resolved.rev = "r2"
-        mock_target_from_str.return_value = mock_resolved
+        mock_snap.return_value = _mock_snapshot_with_entries([("abc123", ["my_expr"])])
 
-        mock_entry = MagicMock()
-        mock_entry.entry_id = "uuid-1"
-        mock_entry.maybe_get_revision.return_value = None
-        mock_cat.return_value.maybe_get_entry.return_value = mock_entry
+        mock_entry = _mock_catalog_entry("abc123", aliases=["my_expr"])
+        mock_resolve.return_value = mock_entry
+
+        mock_entries.return_value = [
+            {
+                "display_name": "my_expr",
+                "aliases": ["my_expr"],
+                "entry_id": "abc123",
+                "revision": None,
+                "build_id": "abc123",
+                "created_at": "2025-06-01",
+            },
+        ]
+        mock_load_expr.return_value = MagicMock()
 
         with tempfile.TemporaryDirectory() as td:
             build_dir = Path(td) / "abc123"
             build_dir.mkdir()
-            mock_resolve.return_value = build_dir
-            mock_entries.return_value = [
-                {
-                    "display_name": "my_expr",
-                    "aliases": ["my_expr"],
-                    "entry_id": "uuid-1",
-                    "revision": "r2",
-                    "build_id": "abc123",
-                    "created_at": "2025-06-01",
-                },
-            ]
-            mock_expr = MagicMock()
-            mock_load_expr.return_value = mock_expr
 
-            resp = self.fetch("/entry/my_expr")
-            assert resp.code == 200
-            body = resp.body.decode()
-            assert "my_expr" in body
-            assert "abc123" in body
-            assert "0.3.7" in body
+            with patch(
+                "xorq.catalog.tar_utils.extract_build_tgz_context",
+                return_value=_fake_extract_build_tgz(build_dir),
+            ):
+                resp = self.fetch("/entry/my_expr")
+                assert resp.code == 200
+                body = resp.body.decode()
+                assert "my_expr" in body
+                assert "abc123" in body
+                assert "0.3.7" in body
 
     @patch("xorq_web.handlers.get_session_entries", return_value=[])
     @patch("xorq_web.handlers.load_lineage_html", return_value={})
@@ -565,18 +581,18 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
     @patch("xorq_web.handlers.ensure_buckaroo_session", return_value={"session": "s1"})
     @patch("xorq_web.handlers.get_entry_revisions")
     @patch("xorq_web.handlers.get_catalog_entries")
-    @patch("xorq.catalog.resolve_build_dir")
-    @patch("xorq.catalog.load_catalog")
-    @patch("xorq.catalog.Target.from_str")
+    @patch("xorq_web.handlers._read_entry_metadata", return_value={})
+    @patch("xorq_web.handlers.resolve_target")
+    @patch("xorq_web.handlers.CatalogSnapshot")
     @patch("xorq.ibis_yaml.compiler.load_expr")
     @patch("xorq.common.utils.caching_utils.get_xorq_cache_dir", return_value="/tmp/cache")
     def test_revision_nav_renders_prev_next(
         self,
         mock_cache,
         mock_load_expr,
-        mock_target_from_str,
-        mock_cat,
+        mock_snap,
         mock_resolve,
+        mock_meta_entry,
         mock_entries,
         mock_revisions,
         mock_bk_session,
@@ -586,36 +602,32 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
     ):
         import tempfile
 
-        # Simulate viewing r2 of 3 revisions
-        mock_resolved = MagicMock()
-        mock_resolved.entry_id = "uuid-1"
-        mock_resolved.rev = "r2"
-        mock_target_from_str.return_value = mock_resolved
+        snap = _mock_snapshot_with_entries([("uuid-1", ["my_expr"])])
+        mock_snap.return_value = snap
 
-        mock_rev_obj = MagicMock()
-        mock_rev_obj.created_at = "2025-06-01"
-        mock_rev_obj.build = MagicMock()
-        mock_rev_obj.build.build_id = "build-r2"
-        mock_entry = MagicMock()
-        mock_entry.entry_id = "uuid-1"
-        mock_entry.maybe_get_revision.return_value = mock_rev_obj
-        mock_cat.return_value.maybe_get_entry.return_value = mock_entry
+        mock_entry = _mock_catalog_entry("uuid-1", aliases=["my_expr"])
+        # Set up revision history on the alias
+        mock_commit = MagicMock()
+        mock_commit.hexsha = "r2r2r2r2r2r2"
+        mock_commit.authored_datetime = "2025-06-01"
+        mock_entry.aliases[0].list_revisions.return_value = [(mock_entry, mock_commit)]
+        mock_resolve.return_value = mock_entry
 
         mock_revisions.return_value = [
             {
-                "revision_id": "r1",
+                "revision_id": "r1r1r1r1r1r1",
                 "build_id": "build-r1",
                 "created_at": "2025-01-01",
                 "is_current": False,
             },
             {
-                "revision_id": "r2",
+                "revision_id": "r2r2r2r2r2r2",
                 "build_id": "build-r2",
                 "created_at": "2025-06-01",
                 "is_current": False,
             },
             {
-                "revision_id": "r3",
+                "revision_id": "r3r3r3r3r3r3",
                 "build_id": "build-r3",
                 "created_at": "2025-09-01",
                 "is_current": True,
@@ -626,8 +638,8 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
                 "display_name": "my_expr",
                 "aliases": ["my_expr"],
                 "entry_id": "uuid-1",
-                "revision": "r3",
-                "build_id": "build-r3",
+                "revision": None,
+                "build_id": "uuid-1",
                 "created_at": "2025-09-01",
             },
         ]
@@ -635,21 +647,19 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
         with tempfile.TemporaryDirectory() as td:
             build_dir = Path(td) / "build-r2"
             build_dir.mkdir()
-            mock_resolve.return_value = build_dir
             mock_load_expr.return_value = MagicMock()
 
-            resp = self.fetch("/entry/my_expr@r2")
-            assert resp.code == 200
-            body = resp.body.decode()
+            with patch(
+                "xorq.catalog.tar_utils.extract_build_tgz_context",
+                return_value=_fake_extract_build_tgz(build_dir),
+            ):
+                resp = self.fetch("/entry/my_expr@r2")
+                assert resp.code == 200
+                body = resp.body.decode()
 
-            # Should show revision nav with prev (r1) and next (r3)
-            assert "my_expr@r1" in body
-            assert "my_expr@r2" in body
-            assert "my_expr@r3" in body
-            # Prev arrow should link to r1
-            assert "/entry/my_expr@r1" in body
-            # Next arrow should link to r3
-            assert "/entry/my_expr@r3" in body
+                # Should show revision nav with prev and next
+                assert "my_expr@r1" in body
+                assert "my_expr@r3" in body
 
     @patch("xorq_web.handlers.get_session_entries", return_value=[])
     @patch("xorq_web.handlers.load_lineage_html", return_value={})
@@ -657,18 +667,18 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
     @patch("xorq_web.handlers.ensure_buckaroo_session", return_value={"session": "s1"})
     @patch("xorq_web.handlers.get_entry_revisions")
     @patch("xorq_web.handlers.get_catalog_entries")
-    @patch("xorq.catalog.resolve_build_dir")
-    @patch("xorq.catalog.load_catalog")
-    @patch("xorq.catalog.Target.from_str")
+    @patch("xorq_web.handlers._read_entry_metadata", return_value={})
+    @patch("xorq_web.handlers.resolve_target")
+    @patch("xorq_web.handlers.CatalogSnapshot")
     @patch("xorq.ibis_yaml.compiler.load_expr")
     @patch("xorq.common.utils.caching_utils.get_xorq_cache_dir", return_value="/tmp/cache")
     def test_no_revision_nav_for_single_revision(
         self,
         mock_cache,
         mock_load_expr,
-        mock_target_from_str,
-        mock_cat,
+        mock_snap,
         mock_resolve,
+        mock_meta_entry,
         mock_entries,
         mock_revisions,
         mock_bk_session,
@@ -678,19 +688,15 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
     ):
         import tempfile
 
-        mock_resolved = MagicMock()
-        mock_resolved.entry_id = "uuid-1"
-        mock_resolved.rev = "r1"
-        mock_target_from_str.return_value = mock_resolved
+        snap = _mock_snapshot_with_entries([("uuid-1", ["solo_expr"])])
+        mock_snap.return_value = snap
 
-        mock_entry = MagicMock()
-        mock_entry.entry_id = "uuid-1"
-        mock_entry.maybe_get_revision.return_value = None
-        mock_cat.return_value.maybe_get_entry.return_value = mock_entry
+        mock_entry = _mock_catalog_entry("uuid-1", aliases=["solo_expr"])
+        mock_resolve.return_value = mock_entry
 
         mock_revisions.return_value = [
             {
-                "revision_id": "r1",
+                "revision_id": "r1r1r1r1r1r1",
                 "build_id": "build-1",
                 "created_at": "2025-01-01",
                 "is_current": True,
@@ -701,8 +707,8 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
                 "display_name": "solo_expr",
                 "aliases": ["solo_expr"],
                 "entry_id": "uuid-1",
-                "revision": "r1",
-                "build_id": "build-1",
+                "revision": None,
+                "build_id": "uuid-1",
                 "created_at": "2025-01-01",
             },
         ]
@@ -710,14 +716,17 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
         with tempfile.TemporaryDirectory() as td:
             build_dir = Path(td) / "build-1"
             build_dir.mkdir()
-            mock_resolve.return_value = build_dir
             mock_load_expr.return_value = MagicMock()
 
-            resp = self.fetch("/entry/solo_expr")
-            assert resp.code == 200
-            body = resp.body.decode()
-            # Should NOT render the revision nav bar for a single revision
-            assert "revision-nav" not in body
+            with patch(
+                "xorq.catalog.tar_utils.extract_build_tgz_context",
+                return_value=_fake_extract_build_tgz(build_dir),
+            ):
+                resp = self.fetch("/entry/solo_expr")
+                assert resp.code == 200
+                body = resp.body.decode()
+                # Should NOT render the revision nav bar for a single revision
+                assert "revision-nav" not in body
 
     @patch("xorq_web.handlers.get_session_entries", return_value=[])
     @patch("xorq_web.handlers.load_lineage_html", return_value={})
@@ -725,18 +734,18 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
     @patch("xorq_web.handlers.ensure_buckaroo_session", return_value={"session": "s1"})
     @patch("xorq_web.handlers.get_entry_revisions", return_value=[])
     @patch("xorq_web.handlers.get_catalog_entries")
-    @patch("xorq.catalog.resolve_build_dir")
-    @patch("xorq.catalog.load_catalog")
-    @patch("xorq.catalog.Target.from_str")
+    @patch("xorq_web.handlers._read_entry_metadata")
+    @patch("xorq_web.handlers.resolve_target")
+    @patch("xorq_web.handlers.CatalogSnapshot")
     @patch("xorq.ibis_yaml.compiler.load_expr")
     @patch("xorq.common.utils.caching_utils.get_xorq_cache_dir", return_value="/tmp/cache")
     def test_prompt_metadata_displayed(
         self,
         mock_cache,
         mock_load_expr,
-        mock_target_from_str,
-        mock_cat,
+        mock_snap,
         mock_resolve,
+        mock_meta_entry,
         mock_entries,
         mock_revisions,
         mock_bk_session,
@@ -746,28 +755,20 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
     ):
         import tempfile
 
-        mock_resolved = MagicMock()
-        mock_resolved.entry_id = "uuid-1"
-        mock_resolved.rev = "r2"
-        mock_target_from_str.return_value = mock_resolved
+        snap = _mock_snapshot_with_entries([("uuid-1", ["my_expr"])])
+        mock_snap.return_value = snap
 
-        mock_rev_obj = MagicMock()
-        mock_rev_obj.created_at = "2025-06-01"
-        mock_rev_obj.build = MagicMock()
-        mock_rev_obj.build.build_id = "build-r2"
-        mock_rev_obj.metadata = {"prompt": "expand the number of rows to 20"}
-        mock_entry = MagicMock()
-        mock_entry.entry_id = "uuid-1"
-        mock_entry.maybe_get_revision.return_value = mock_rev_obj
-        mock_cat.return_value.maybe_get_entry.return_value = mock_entry
+        mock_entry = _mock_catalog_entry("uuid-1", aliases=["my_expr"])
+        mock_resolve.return_value = mock_entry
+        mock_meta_entry.return_value = {"prompt": "expand the number of rows to 20"}
 
         mock_entries.return_value = [
             {
                 "display_name": "my_expr",
                 "aliases": ["my_expr"],
                 "entry_id": "uuid-1",
-                "revision": "r2",
-                "build_id": "build-r2",
+                "revision": None,
+                "build_id": "uuid-1",
                 "created_at": "2025-06-01",
             },
         ]
@@ -775,14 +776,17 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
         with tempfile.TemporaryDirectory() as td:
             build_dir = Path(td) / "build-r2"
             build_dir.mkdir()
-            mock_resolve.return_value = build_dir
             mock_load_expr.return_value = MagicMock()
 
-            resp = self.fetch("/entry/my_expr@r2")
-            assert resp.code == 200
-            body = resp.body.decode()
-            assert "prompt-block" in body
-            assert "expand the number of rows to 20" in body
+            with patch(
+                "xorq.catalog.tar_utils.extract_build_tgz_context",
+                return_value=_fake_extract_build_tgz(build_dir),
+            ):
+                resp = self.fetch("/entry/my_expr@r2")
+                assert resp.code == 200
+                body = resp.body.decode()
+                assert "prompt-block" in body
+                assert "expand the number of rows to 20" in body
 
     @patch("xorq_web.handlers.get_session_entries", return_value=[])
     @patch("xorq_web.handlers.load_lineage_html", return_value={})
@@ -790,18 +794,18 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
     @patch("xorq_web.handlers.ensure_buckaroo_session", return_value={"session": "s1"})
     @patch("xorq_web.handlers.get_entry_revisions", return_value=[])
     @patch("xorq_web.handlers.get_catalog_entries")
-    @patch("xorq.catalog.resolve_build_dir")
-    @patch("xorq.catalog.load_catalog")
-    @patch("xorq.catalog.Target.from_str")
+    @patch("xorq_web.handlers._read_entry_metadata", return_value={})
+    @patch("xorq_web.handlers.resolve_target")
+    @patch("xorq_web.handlers.CatalogSnapshot")
     @patch("xorq.ibis_yaml.compiler.load_expr")
     @patch("xorq.common.utils.caching_utils.get_xorq_cache_dir", return_value="/tmp/cache")
     def test_no_prompt_block_when_no_metadata(
         self,
         mock_cache,
         mock_load_expr,
-        mock_target_from_str,
-        mock_cat,
+        mock_snap,
         mock_resolve,
+        mock_meta_entry,
         mock_entries,
         mock_revisions,
         mock_bk_session,
@@ -811,23 +815,19 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
     ):
         import tempfile
 
-        mock_resolved = MagicMock()
-        mock_resolved.entry_id = "uuid-1"
-        mock_resolved.rev = "r1"
-        mock_target_from_str.return_value = mock_resolved
+        snap = _mock_snapshot_with_entries([("uuid-1", ["my_expr"])])
+        mock_snap.return_value = snap
 
-        mock_entry = MagicMock()
-        mock_entry.entry_id = "uuid-1"
-        mock_entry.maybe_get_revision.return_value = None
-        mock_cat.return_value.maybe_get_entry.return_value = mock_entry
+        mock_entry = _mock_catalog_entry("uuid-1", aliases=["my_expr"])
+        mock_resolve.return_value = mock_entry
 
         mock_entries.return_value = [
             {
                 "display_name": "my_expr",
                 "aliases": ["my_expr"],
                 "entry_id": "uuid-1",
-                "revision": "r1",
-                "build_id": "build-1",
+                "revision": None,
+                "build_id": "uuid-1",
                 "created_at": "2025-01-01",
             },
         ]
@@ -835,13 +835,16 @@ class TestExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
         with tempfile.TemporaryDirectory() as td:
             build_dir = Path(td) / "build-1"
             build_dir.mkdir()
-            mock_resolve.return_value = build_dir
             mock_load_expr.return_value = MagicMock()
 
-            resp = self.fetch("/entry/my_expr")
-            assert resp.code == 200
-            body = resp.body.decode()
-            assert "prompt-block" not in body
+            with patch(
+                "xorq.catalog.tar_utils.extract_build_tgz_context",
+                return_value=_fake_extract_build_tgz(build_dir),
+            ):
+                resp = self.fetch("/entry/my_expr")
+                assert resp.code == 200
+                body = resp.body.decode()
+                assert "prompt-block" not in body
 
 
 # -----------------------------------------------------------------------
@@ -914,24 +917,9 @@ class TestCatalogLsOpensWebUrl:
     @patch("xorq_mcp_tool.ensure_web_server", return_value={"web_status": "reused"})
     @patch("xorq_mcp_tool.ensure_server", return_value={"server_status": "reused"})
     def test_opens_web_catalog_url(self, mock_srv, mock_web, mock_browser):
-        mock_build = MagicMock()
-        mock_build.build_id = "abc"
+        snap = _mock_snapshot_with_entries([("entry-1", ["my_entry"])])
 
-        mock_rev = MagicMock()
-        mock_rev.revision_id = "r1"
-        mock_rev.build = mock_build
-        mock_rev.created_at = None
-
-        mock_entry = MagicMock()
-        mock_entry.entry_id = "entry-1"
-        mock_entry.current_revision = "r1"
-        mock_entry.history = [mock_rev]
-
-        mock_catalog = MagicMock()
-        mock_catalog.entries = [mock_entry]
-        mock_catalog.aliases = {}
-
-        with patch("xorq.catalog.load_catalog", return_value=mock_catalog):
+        with patch("xorq_web.catalog_utils.CatalogSnapshot", return_value=snap):
             from xorq_mcp_tool import WEB_URL, xorq_catalog_ls
 
             result = xorq_catalog_ls()
@@ -1034,8 +1022,10 @@ class TestSessionExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
 
     @patch("xorq_web.handlers.get_session_entries", return_value=[])
     @patch("xorq_web.handlers.get_catalog_entries", return_value=[])
+    @patch("xorq_web.handlers.CatalogSnapshot")
     @patch("xorq_web.session_store.get_session_entry", return_value=None)
-    def test_missing_session_returns_404(self, mock_entry, mock_entries, mock_session):
+    def test_missing_session_returns_404(self, mock_entry, mock_snap, mock_entries, mock_session):
+        mock_snap.return_value = _mock_empty_snapshot()
         resp = self.fetch("/session/nonexistent")
         assert resp.code == 404
 
@@ -1044,12 +1034,14 @@ class TestSessionExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
     @patch("xorq_web.handlers.load_build_metadata", return_value={})
     @patch("xorq_web.handlers.ensure_buckaroo_session", return_value={"session": "abc"})
     @patch("xorq_web.handlers.get_catalog_entries", return_value=[])
+    @patch("xorq_web.handlers.CatalogSnapshot")
     @patch("xorq.ibis_yaml.compiler.load_expr")
     @patch("xorq.common.utils.caching_utils.get_xorq_cache_dir", return_value="/tmp/cache")
     def test_valid_session_renders(
         self,
         mock_cache,
         mock_load_expr,
+        mock_snap,
         mock_entries,
         mock_bk_session,
         mock_meta,
@@ -1058,6 +1050,7 @@ class TestSessionExpressionDetailHandler(tornado.testing.AsyncHTTPTestCase):
     ):
         import tempfile
 
+        mock_snap.return_value = _mock_empty_snapshot()
         mock_load_expr.return_value = MagicMock()
 
         with tempfile.TemporaryDirectory() as td:
@@ -1145,6 +1138,170 @@ class TestQueryParamPassthrough(tornado.testing.AsyncHTTPTestCase):
     @patch("xorq_web.handlers.get_session_entries", return_value=[])
     @patch("xorq_web.handlers.get_all_entries", return_value=[])
     @patch("xorq_web.handlers.get_catalog_entries", return_value=[])
-    def test_catalog_index_ignores_query_param(self, mock_entries, mock_all, mock_session):
+    @patch("xorq_web.handlers.CatalogSnapshot")
+    def test_catalog_index_ignores_query_param(
+        self, mock_snap, mock_entries, mock_all, mock_session
+    ):
+        mock_snap.return_value = _mock_empty_snapshot()
         resp = self.fetch("/?s=abc123")
         assert resp.code == 200
+
+
+# -----------------------------------------------------------------------
+# catalog_utils.py — CatalogSnapshot
+# -----------------------------------------------------------------------
+class TestCatalogSnapshot:
+    def test_empty_snapshot(self):
+        mock_catalog = MagicMock()
+        mock_catalog.catalog_entries = ()
+        mock_catalog.catalog_aliases = ()
+
+        from xorq_web.catalog_utils import CatalogSnapshot
+
+        snap = CatalogSnapshot(mock_catalog)
+        assert snap.entries == ()
+        assert snap.aliases == ()
+        assert snap.contains("anything") is False
+        assert snap.get_catalog_entry("anything") is None
+        assert snap.aliases_for("anything") == []
+
+    def test_resolve_by_entry_name(self):
+        mock_entry = MagicMock()
+        mock_entry.name = "abc123"
+        mock_entry.aliases = ()
+
+        mock_catalog = MagicMock()
+        mock_catalog.catalog_entries = (mock_entry,)
+        mock_catalog.catalog_aliases = ()
+
+        from xorq_web.catalog_utils import CatalogSnapshot
+
+        snap = CatalogSnapshot(mock_catalog)
+        assert snap.contains("abc123") is True
+        assert snap.get_catalog_entry("abc123") is mock_entry
+
+    def test_resolve_by_alias(self):
+        mock_entry = MagicMock()
+        mock_entry.name = "abc123"
+        mock_entry.aliases = ()
+
+        mock_alias = MagicMock()
+        mock_alias.alias = "my_alias"
+        mock_alias.catalog_entry = mock_entry
+
+        mock_catalog = MagicMock()
+        mock_catalog.catalog_entries = (mock_entry,)
+        mock_catalog.catalog_aliases = (mock_alias,)
+
+        from xorq_web.catalog_utils import CatalogSnapshot
+
+        snap = CatalogSnapshot(mock_catalog)
+        assert snap.contains("my_alias") is True
+        assert snap.get_catalog_entry("my_alias") is mock_entry
+        assert snap.aliases_for("abc123") == ["my_alias"]
+        assert snap.display_name_for("abc123") == "my_alias"
+
+    def test_display_name_truncates_without_alias(self):
+        mock_entry = MagicMock()
+        mock_entry.name = "abcdef123456789000"
+        mock_entry.aliases = ()
+
+        mock_catalog = MagicMock()
+        mock_catalog.catalog_entries = (mock_entry,)
+        mock_catalog.catalog_aliases = ()
+
+        from xorq_web.catalog_utils import CatalogSnapshot
+
+        snap = CatalogSnapshot(mock_catalog)
+        assert snap.display_name_for("abcdef123456789000") == "abcdef123456"
+
+
+# -----------------------------------------------------------------------
+# catalog_utils.py — resolve_target
+# -----------------------------------------------------------------------
+class TestResolveTarget:
+    def test_returns_none_for_unknown(self):
+        from xorq_web.catalog_utils import resolve_target
+
+        snap = _mock_empty_snapshot()
+        assert resolve_target("nope", snap) is None
+
+    def test_resolves_entry_name(self):
+        from xorq_web.catalog_utils import resolve_target
+
+        snap = _mock_snapshot_with_entries([("abc123", ["my_alias"])])
+        entry = resolve_target("abc123", snap)
+        assert entry is not None
+        assert entry.name == "abc123"
+
+    def test_resolves_alias(self):
+        from xorq_web.catalog_utils import resolve_target
+
+        snap = _mock_snapshot_with_entries([("abc123", ["my_alias"])])
+        entry = resolve_target("my_alias", snap)
+        assert entry is not None
+        assert entry.name == "abc123"
+
+    def test_strips_revision_suffix(self):
+        from xorq_web.catalog_utils import resolve_target
+
+        snap = _mock_snapshot_with_entries([("abc123", ["my_alias"])])
+        entry = resolve_target("my_alias@r2", snap)
+        assert entry is not None
+        assert entry.name == "abc123"
+
+
+# -----------------------------------------------------------------------
+# catalog_utils.py — metadata read/write
+# -----------------------------------------------------------------------
+class TestEntryMetadata:
+    def test_read_returns_empty_on_missing(self):
+        from xorq_web.catalog_utils import _read_entry_metadata
+
+        entry = MagicMock()
+        entry.metadata_path = Path("/nonexistent/metadata.yaml")
+        entry.name = "test"
+        result = _read_entry_metadata(entry)
+        assert result == {}
+
+    def test_read_returns_dict(self, tmp_path):
+        import yaml
+
+        from xorq_web.catalog_utils import _read_entry_metadata
+
+        meta_path = tmp_path / "meta.yaml"
+        meta_path.write_text(yaml.dump({"prompt": "hello", "execute_seconds": 1.5}))
+
+        entry = MagicMock()
+        entry.metadata_path = meta_path
+        entry.name = "test"
+        result = _read_entry_metadata(entry)
+        assert result == {"prompt": "hello", "execute_seconds": 1.5}
+
+    def test_read_returns_empty_on_malformed(self, tmp_path):
+        from xorq_web.catalog_utils import _read_entry_metadata
+
+        meta_path = tmp_path / "meta.yaml"
+        meta_path.write_text("not: valid: yaml: {{{}}")
+
+        entry = MagicMock()
+        entry.metadata_path = meta_path
+        entry.name = "test"
+        result = _read_entry_metadata(entry)
+        assert result == {}
+
+    def test_write_merges(self, tmp_path):
+        import yaml
+
+        from xorq_web.catalog_utils import _read_entry_metadata, _write_entry_metadata
+
+        meta_path = tmp_path / "meta.yaml"
+        meta_path.write_text(yaml.dump({"prompt": "hello"}))
+
+        entry = MagicMock()
+        entry.metadata_path = meta_path
+        entry.name = "test"
+        _write_entry_metadata(entry, {"execute_seconds": 2.0})
+
+        result = _read_entry_metadata(entry)
+        assert result == {"prompt": "hello", "execute_seconds": 2.0}

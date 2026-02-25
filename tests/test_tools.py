@@ -47,9 +47,11 @@ class TestCatalogLs:
     """Tests for the xorq_catalog_ls tool."""
 
     def test_empty_catalog(self):
-        from xorq.catalog import XorqCatalog
+        mock_snap = MagicMock()
+        mock_snap.entries = ()
+        mock_snap.aliases = ()
 
-        with patch("xorq.catalog.load_catalog", return_value=XorqCatalog()):
+        with patch("xorq_web.catalog_utils.CatalogSnapshot", return_value=mock_snap):
             from xorq_mcp_tool import xorq_catalog_ls
 
             result = xorq_catalog_ls()
@@ -60,9 +62,12 @@ class TestDiffBuilds:
     """Tests for the xorq_diff_builds tool."""
 
     def test_missing_left_target(self):
-        from xorq.catalog import XorqCatalog
+        mock_snap = MagicMock()
+        mock_snap.entries = ()
+        mock_snap.aliases = ()
+        mock_snap.get_catalog_entry.return_value = None
 
-        with patch("xorq.catalog.load_catalog", return_value=XorqCatalog()):
+        with patch("xorq_web.catalog_utils.CatalogSnapshot", return_value=mock_snap):
             from xorq_mcp_tool import xorq_diff_builds
 
             result = xorq_diff_builds("/nonexistent/left", "/nonexistent/right")
@@ -73,9 +78,12 @@ class TestLineage:
     """Tests for the xorq_lineage tool."""
 
     def test_missing_build_target(self):
-        from xorq.catalog import XorqCatalog
+        mock_snap = MagicMock()
+        mock_snap.entries = ()
+        mock_snap.aliases = ()
+        mock_snap.get_catalog_entry.return_value = None
 
-        with patch("xorq.catalog.load_catalog", return_value=XorqCatalog()):
+        with patch("xorq_web.catalog_utils.CatalogSnapshot", return_value=mock_snap):
             from xorq_mcp_tool import xorq_lineage
 
             result = xorq_lineage("/nonexistent/build")
